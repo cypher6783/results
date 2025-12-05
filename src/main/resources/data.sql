@@ -1,0 +1,30 @@
+-- Insert Academic Sessions from 2000/2001 to 2025/2026
+-- Each session runs from September to August of the following year
+
+INSERT INTO academic_sessions (id, name, start_date, end_date, is_current, labeled) VALUES
+(RANDOM_UUID(), '2000/2001', '2000-09-01', '2001-08-31', false, true),
+(RANDOM_UUID(), '2001/2002', '2001-09-01', '2002-08-31', false, true),
+(RANDOM_UUID(), '2002/2003', '2002-09-01', '2003-08-31', false, true),
+(RANDOM_UUID(), '2003/2004', '2003-09-01', '2004-08-31', false, true),
+(RANDOM_UUID(), '2004/2005', '2004-09-01', '2005-08-31', false, true),
+(RANDOM_UUID(), '2005/2006', '2005-09-01', '2006-08-31', false, true),
+(RANDOM_UUID(), '2006/2007', '2006-09-01', '2007-08-31', false, true),
+(RANDOM_UUID(), '2007/2008', '2007-09-01', '2008-08-31', false, true),
+(RANDOM_UUID(), '2008/2009', '2008-09-01', '2009-08-31', false, true),
+(RANDOM_UUID(), '2009/2010', '2009-09-01', '2010-08-31', false, true),
+(RANDOM_UUID(), '2010/2011', '2010-09-01', '2011-08-31', false, true),
+(RANDOM_UUID(), '2011/2012', '2011-09-01', '2012-08-31', false, true),
+(RANDOM_UUID(), '2012/2013', '2012-09-01', '2013-08-31', false, true),
+(RANDOM_UUID(), '2013/2014', '2013-09-01', '2014-08-31', false, true),
+(RANDOM_UUID(), '2014/2015', '2014-09-01', '2015-08-31', false, true),
+(RANDOM_UUID(), '2015/2016', '2015-09-01', '2016-08-31', false, true),
+(RANDOM_UUID(), '2016/2017', '2016-09-01', '2017-08-31', false, true),
+(RANDOM_UUID(), '2017/2018', '2017-09-01', '2018-08-31', false, true),
+(RANDOM_UUID(), '2018/2019', '2018-09-01', '2019-08-31', false, true),
+(RANDOM_UUID(), '2019/2020', '2019-09-01', '2020-08-31', false, true),
+(RANDOM_UUID(), '2020/2021', '2020-09-01', '2021-08-31', false, true),
+(RANDOM_UUID(), '2021/2022', '2021-09-01', '2022-08-31', false, true),
+(RANDOM_UUID(), '2022/2023', '2022-09-01', '2023-08-31', false, true),
+(RANDOM_UUID(), '2023/2024', '2023-09-01', '2024-08-31', false, true),
+(RANDOM_UUID(), '2024/2025', '2024-09-01', '2025-08-31', true, false),
+(RANDOM_UUID(), '2025/2026', '2025-09-01', '2026-08-31', false, false);
