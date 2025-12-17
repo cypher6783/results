@@ -64,7 +64,8 @@ public class StudentController {
         }
 
         @GetMapping("/result/pdf")
-        public ResponseEntity<byte[]> downloadResultPdf(@RequestParam UUID sessionId, @RequestParam Integer semester) {
+        public ResponseEntity<byte[]> downloadResultPdf(@RequestParam UUID sessionId, @RequestParam Integer semester,
+                        @RequestParam(defaultValue = "view") String mode) {
                 Authentication auth = SecurityContextHolder.getContext().getAuthentication();
                 String username = auth.getName();
 
@@ -83,8 +84,11 @@ public class StudentController {
                                         + result.getSessionName().replace("/", "-")
                                         + ".pdf";
 
+                        String dispositionType = "download".equals(mode) ? "attachment" : "inline";
+
                         return ResponseEntity.ok()
-                                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=" + filename)
+                                        .header(HttpHeaders.CONTENT_DISPOSITION,
+                                                        dispositionType + "; filename=" + filename)
                                         .contentType(MediaType.APPLICATION_PDF)
                                         .body(pdfBytes);
                 } catch (Exception e) {

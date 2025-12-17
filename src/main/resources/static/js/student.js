@@ -27,7 +27,10 @@ export function renderStudentDashboard(user) {
                         <option value="2">Second Semester</option>
                     </select>
                 </div>
-                <button class="btn btn-primary" id="viewResultBtn">View Result</button>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" id="viewResultBtn" style="flex: 1;">View Result</button>
+                    <button class="btn btn-outline" id="downloadResultBtn" style="flex: 1;">Download PDF</button>
+                </div>
             </div>
             <div id="resultDisplay" style="margin-top: 2rem"></div>
 
@@ -62,7 +65,7 @@ export function renderStudentDashboard(user) {
         window.location.reload();
     });
 
-    document.getElementById('viewResultBtn').addEventListener('click', () => {
+    const handleResultAction = (action) => {
         const sessionId = document.getElementById('sessionSelect').value;
         const semester = document.getElementById('semesterSelect').value;
         
@@ -71,10 +74,19 @@ export function renderStudentDashboard(user) {
             return;
         }
 
-        // Direct PDF Preview
-        const pdfUrl = `/api/student/result/pdf?sessionId=${sessionId}&semester=${semester}`;
-        window.open(pdfUrl, '_blank');
-    });
+        const mode = action === 'download' ? 'download' : 'view';
+        const pdfUrl = `/api/student/result/pdf?sessionId=${sessionId}&semester=${semester}&mode=${mode}`;
+        
+        if (mode === 'view') {
+            window.open(pdfUrl, '_blank');
+        } else {
+            // Trigger download by valid navigation or creating a temporary link
+            window.location.href = pdfUrl;
+        }
+    };
+
+    document.getElementById('viewResultBtn').addEventListener('click', () => handleResultAction('view'));
+    document.getElementById('downloadResultBtn').addEventListener('click', () => handleResultAction('download'));
     
     document.getElementById('changePasswordBtn').addEventListener('click', () => {
         document.getElementById('passwordModal').style.display = 'block';
