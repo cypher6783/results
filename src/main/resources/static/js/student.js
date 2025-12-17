@@ -62,7 +62,7 @@ export function renderStudentDashboard(user) {
         window.location.reload();
     });
 
-    document.getElementById('viewResultBtn').addEventListener('click', async () => {
+    document.getElementById('viewResultBtn').addEventListener('click', () => {
         const sessionId = document.getElementById('sessionSelect').value;
         const semester = document.getElementById('semesterSelect').value;
         
@@ -71,17 +71,9 @@ export function renderStudentDashboard(user) {
             return;
         }
 
-        try {
-            const response = await fetch(`/api/student/result/detailed?sessionId=${sessionId}&semester=${semester}`);
-            if (response.ok) {
-                const result = await response.json();
-                renderResult(result);
-            } else {
-                document.getElementById('resultDisplay').innerHTML = '<p style="color: var(--error-color)">Result not found</p>';
-            }
-        } catch (e) {
-            console.error(e);
-        }
+        // Direct PDF Preview
+        const pdfUrl = `/api/student/result/pdf?sessionId=${sessionId}&semester=${semester}`;
+        window.open(pdfUrl, '_blank');
     });
     
     document.getElementById('changePasswordBtn').addEventListener('click', () => {
