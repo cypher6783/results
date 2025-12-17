@@ -223,7 +223,7 @@ export function renderAdminDashboard(user) {
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary">Generate Results</button>
-                    <button type="submit" class="btn btn-primary">Generate Results</button>
+
                     <button type="button" class="btn" id="downloadBatchPdfBtn" style="display: none; margin-left: 0.5rem;">Download Batch PDF</button>
                     <button type="button" class="btn" id="cancelResultsBtn">Cancel</button>
                 </form>
