@@ -12,4 +12,8 @@ public interface ScoreRepository extends JpaRepository<Score, UUID> {
     Optional<Score> findByRegistrationId(UUID registrationId);
 
     Optional<Score> findByRegistration(com.university.resultsystem.model.CourseRegistration registration);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    void deleteByRegistrationCourseId(UUID courseId);
 }

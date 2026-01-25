@@ -81,7 +81,7 @@ public class BulkUploadService {
                 String[] fields = line.split(",");
                 if (fields.length < 6) {
                     throw new RuntimeException(
-                            "Invalid CSV format. Expected: Code,Title,Units,Semester,Level,Department");
+                            "Invalid CSV format. Expected: Code,Title,Units,Semester,Level,Department[,LecturerStaffId]");
                 }
 
                 com.university.resultsystem.dto.CourseDto dto = new com.university.resultsystem.dto.CourseDto();
@@ -91,6 +91,10 @@ public class BulkUploadService {
                 dto.setSemester(Integer.parseInt(fields[3].trim()));
                 dto.setLevel(Integer.parseInt(fields[4].trim()));
                 dto.setDepartment(fields[5].trim());
+
+                if (fields.length >= 7 && !fields[6].trim().isEmpty()) {
+                    dto.setLecturerStaffId(fields[6].trim());
+                }
 
                 com.university.resultsystem.model.Course course = courseService.createCourse(dto);
                 createdCourses.add(course);

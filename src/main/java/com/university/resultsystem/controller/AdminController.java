@@ -1,15 +1,22 @@
 package com.university.resultsystem.controller;
 
-import com.university.resultsystem.dto.AcademicSessionDto;
-import com.university.resultsystem.dto.CourseDto;
+import com.university.resultsystem.dto.LecturerRegistrationDto;
+import com.university.resultsystem.dto.StudentRegistrationDto;
 import com.university.resultsystem.model.AcademicSession;
 import com.university.resultsystem.model.Course;
-import com.university.resultsystem.model.User;
+import com.university.resultsystem.model.Lecturer;
+import com.university.resultsystem.model.Student;
+import com.university.resultsystem.repository.AcademicSessionRepository;
+import com.university.resultsystem.repository.CourseRepository;
+import com.university.resultsystem.repository.LecturerRepository;
+import com.university.resultsystem.repository.StudentRepository;
 import com.university.resultsystem.service.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -17,167 +24,159 @@ import java.util.UUID;
 public class AdminController {
 
     private final UserService userService;
+    private final BulkUploadService bulkUploadService;
     private final CourseService courseService;
-    private final AcademicSessionService sessionService;
-    private final RegistrationService registrationService;
     private final ResultService resultService;
-    private final com.university.resultsystem.repository.LecturerRepository lecturerRepository;
+    private final StudentRepository studentRepository;
+    private final LecturerRepository lecturerRepository;
+    private final AcademicSessionRepository sessionRepository;
     private final PdfService pdfService;
-    private final com.university.resultsystem.repository.StudentRepository studentRepository;
 
-    private final com.university.resultsystem.service.BulkUploadService bulkService;
-
-    public AdminController(UserService userService, CourseService courseService, AcademicSessionService sessionService,
-            RegistrationService registrationService, ResultService resultService,
-            com.university.resultsystem.repository.LecturerRepository lecturerRepository, PdfService pdfService,
-            com.university.resultsystem.repository.StudentRepository studentRepository,
-            com.university.resultsystem.service.BulkUploadService bulkService) {
+    public AdminController(UserService userService,
+            BulkUploadService bulkUploadService,
+            CourseService courseService,
+            ResultService resultService,
+            StudentRepository studentRepository,
+            LecturerRepository lecturerRepository,
+            AcademicSessionRepository sessionRepository,
+            PdfService pdfService) {
         this.userService = userService;
+        this.bulkUploadService = bulkUploadService;
         this.courseService = courseService;
-        this.sessionService = sessionService;
-        this.registrationService = registrationService;
         this.resultService = resultService;
-        this.lecturerRepository = lecturerRepository;
-        this.pdfService = pdfService;
         this.studentRepository = studentRepository;
-        this.bulkService = bulkService;
+        this.lecturerRepository = lecturerRepository;
+        this.sessionRepository = sessionRepository;
+        this.pdfService = pdfService;
     }
 
-    // User Management
+    // Student Management
     @PostMapping("/students")
-    public ResponseEntity<?> createStudent(@RequestBody com.university.resultsystem.dto.StudentRegistrationDto dto) {
+    public ResponseEntity<?> addStudent(@RequestBody StudentRegistrationDto studentDto) {
         try {
-            return ResponseEntity.ok(userService.createStudent(dto));
+            return ResponseEntity.ok(userService.createStudent(studentDto));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    @PostMapping("/lecturers")
-    public ResponseEntity<?> createLecturer(@RequestBody com.university.resultsystem.dto.LecturerRegistrationDto dto) {
+    @PostMapping("/students/bulk")
+    public ResponseEntity<String> bulkUploadStudents(@RequestParam("file") MultipartFile file) {
         try {
-            return ResponseEntity.ok(userService.createLecturer(dto));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            bulkUploadService.uploadStudents(file);
+            return ResponseEntity.ok("Successfully uploaded students from CSV");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to upload students: " + e.getMessage());
         }
     }
 
     @GetMapping("/students")
-    public ResponseEntity<List<User>> getAllStudents() {
+    public ResponseEntity<List<com.university.resultsystem.model.User>> getAllStudents() {
         return ResponseEntity.ok(userService.getAllStudents());
     }
 
-    @GetMapping("/lecturers")
-    public ResponseEntity<List<User>> getAllLecturers() {
-        return ResponseEntity.ok(userService.getAllLecturers());
-    }
-
-    @GetMapping("/lecturers/entities")
-    public ResponseEntity<List<com.university.resultsystem.model.Lecturer>> getAllLecturerEntities() {
-        return ResponseEntity.ok(lecturerRepository.findAll());
-    }
-
-    @GetMapping("/users")
-    public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
-    }
-
-    // Lecturer Assignment
-    @PostMapping("/courses/{courseId}/lecturers")
-    public ResponseEntity<?> assignLecturers(@PathVariable UUID courseId, @RequestBody List<UUID> lecturerIds) {
+    // Lecturer Management
+    @PostMapping("/lecturers")
+    public ResponseEntity<?> addLecturer(@RequestBody LecturerRegistrationDto lecturerDto) {
         try {
-            return ResponseEntity.ok(courseService.assignLecturers(courseId, lecturerIds));
+            return ResponseEntity.ok(userService.createLecturer(lecturerDto));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    // Bulk Uploads
-    @PostMapping("/students/bulk")
-    public ResponseEntity<?> bulkUploadStudents(
-            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+    @GetMapping("/lecturers")
+    public ResponseEntity<List<com.university.resultsystem.model.User>> getAllLecturers() {
+        return ResponseEntity.ok(userService.getAllLecturers());
+    }
+
+    @GetMapping("/lecturers/entities")
+    public ResponseEntity<List<Lecturer>> getAllLecturerEntities() {
+        return ResponseEntity.ok(lecturerRepository.findAll());
+    }
+
+    // Course Management
+    @PostMapping("/courses")
+    public ResponseEntity<?> addCourse(@RequestBody Map<String, Object> payload) {
         try {
-            List<User> students = bulkService.parseAndCreateStudents(file);
-            return ResponseEntity.ok("Successfully created " + students.size() + " students");
-        } catch (RuntimeException e) {
+            Course course = new Course();
+            course.setCode((String) payload.get("code"));
+            course.setTitle((String) payload.get("title"));
+            course.setUnits((Integer) payload.get("units"));
+            course.setSemester((Integer) payload.get("semester"));
+            course.setLevel((Integer) payload.get("level"));
+            course.setDepartment((String) payload.get("department"));
+
+            String lecturerIdStr = (String) payload.get("lecturerId");
+            UUID lecturerId = (lecturerIdStr != null && !lecturerIdStr.isEmpty()) ? UUID.fromString(lecturerIdStr)
+                    : null;
+
+            return ResponseEntity.ok(courseService.createCourse(course, lecturerId));
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @PostMapping("/courses/bulk")
-    public ResponseEntity<?> bulkUploadCourses(
-            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+    public ResponseEntity<String> bulkUploadCourses(@RequestParam("file") MultipartFile file) {
         try {
-            List<Course> courses = bulkService.parseAndCreateCourses(file);
-            return ResponseEntity.ok("Successfully created " + courses.size() + " courses");
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
-    // Session Labeling
-    @PostMapping("/sessions/{sessionId}/label")
-    public ResponseEntity<?> labelSession(@PathVariable UUID sessionId) {
-        try {
-            return ResponseEntity.ok(sessionService.labelSession(sessionId));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
-    @PostMapping("/sessions/{sessionId}/unlabel")
-    public ResponseEntity<?> unlabelSession(@PathVariable UUID sessionId) {
-        try {
-            return ResponseEntity.ok(sessionService.unlabelSession(sessionId));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
-    // Course Management
-    @PostMapping("/courses")
-    public ResponseEntity<?> createCourse(@RequestBody CourseDto dto) {
-        try {
-            return ResponseEntity.ok(courseService.createCourse(dto));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            bulkUploadService.uploadCourses(file);
+            return ResponseEntity.ok("Successfully uploaded courses from CSV");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to upload courses: " + e.getMessage());
         }
     }
 
     @GetMapping("/courses")
-    public ResponseEntity<List<Course>> getAllCourses() {
-        return ResponseEntity.ok(courseService.getAllCourses());
+    public List<Course> getAllCourses() {
+        return courseService.getAllCourses();
+    }
+
+    @PutMapping("/courses/{id}")
+    public ResponseEntity<?> updateCourse(@PathVariable UUID id, @RequestBody Map<String, Object> payload) {
+        try {
+            Course course = new Course();
+            course.setCode((String) payload.get("code"));
+            course.setTitle((String) payload.get("title"));
+            course.setUnits((Integer) payload.get("units"));
+            course.setSemester((Integer) payload.get("semester"));
+            course.setLevel((Integer) payload.get("level"));
+            course.setDepartment((String) payload.get("department"));
+
+            String lecturerIdStr = (String) payload.get("lecturerId");
+            UUID lecturerId = (lecturerIdStr != null && !lecturerIdStr.isEmpty()) ? UUID.fromString(lecturerIdStr)
+                    : null;
+
+            return ResponseEntity.ok(courseService.updateCourse(id, course, lecturerId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/courses/{id}")
+    public ResponseEntity<?> deleteCourse(@PathVariable UUID id) {
+        try {
+            courseService.deleteCourse(id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     // Session Management
-    @PostMapping("/sessions")
-    public ResponseEntity<AcademicSession> createSession(@RequestBody AcademicSessionDto dto) {
-        return ResponseEntity.ok(sessionService.createSession(dto));
-    }
-
     @GetMapping("/sessions")
     public ResponseEntity<List<AcademicSession>> getAllSessions() {
-        return ResponseEntity.ok(sessionService.getAllSessions());
+        return ResponseEntity.ok(sessionRepository.findAll());
     }
 
-    // Registration
-    @PostMapping("/register")
-    public ResponseEntity<?> registerStudent(@RequestParam UUID studentId, @RequestParam UUID courseId,
-            @RequestParam UUID sessionId) {
-        return ResponseEntity.ok(registrationService.registerStudent(studentId, courseId, sessionId));
+    @PostMapping("/sessions")
+    public ResponseEntity<AcademicSession> createSession(@RequestBody AcademicSession session) {
+        return ResponseEntity.ok(sessionRepository.save(session));
     }
 
-    // Result Processing
-    @PostMapping("/process-results")
-    public ResponseEntity<?> processResults(@RequestParam UUID studentId, @RequestParam UUID sessionId,
-            @RequestParam Integer semester) {
-        return ResponseEntity.ok(resultService.processResult(studentId, sessionId, semester));
-    }
-
-    // Admin Password Change
+    // Admin Password Reset
     @PostMapping("/change-password")
-    public ResponseEntity<?> adminChangePassword(
-            @RequestBody com.university.resultsystem.dto.AdminPasswordChangeDto dto) {
+    public ResponseEntity<?> changePassword(@RequestBody com.university.resultsystem.dto.AdminPasswordChangeDto dto) {
         try {
             userService.adminChangePassword(dto.getUsername(), dto.getNewPassword());
             return ResponseEntity.ok().body("Password changed successfully. User must change password on next login.");
@@ -191,6 +190,16 @@ public class AdminController {
     public ResponseEntity<?> processBulkResults(@RequestParam UUID sessionId, @RequestParam Integer semester) {
         try {
             return ResponseEntity.ok(resultService.processBulkResults(sessionId, semester));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/publish-results")
+    public ResponseEntity<?> publishResults(@RequestParam UUID sessionId, @RequestParam Integer semester) {
+        try {
+            resultService.publishResults(sessionId, semester);
+            return ResponseEntity.ok("Results published successfully");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -228,6 +237,16 @@ public class AdminController {
                     .body(pdfBytes);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    @PostMapping("/reset-results")
+    public ResponseEntity<?> resetAllResults() {
+        try {
+            resultService.deleteAllResults();
+            return ResponseEntity.ok("All processed results have been deleted successfully. You can now start afresh.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }

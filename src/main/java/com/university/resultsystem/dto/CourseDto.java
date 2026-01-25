@@ -11,4 +11,5 @@ public class CourseDto {
     private Integer level;
     private String department;
     private java.util.UUID lecturerId;
+    private String lecturerStaffId;
 }

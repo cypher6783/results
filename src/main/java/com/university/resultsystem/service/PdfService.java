@@ -7,12 +7,14 @@ import com.itextpdf.text.pdf.PdfWriter;
 import com.university.resultsystem.config.UniversityConfig;
 import com.university.resultsystem.dto.CourseResultDto;
 import com.university.resultsystem.dto.DetailedResultDto;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
+@Slf4j
 @Service
 public class PdfService {
 
@@ -67,7 +69,7 @@ public class PdfService {
         try {
             headerTable.setWidths(new float[] { 1.5f, 7f, 1.5f });
         } catch (DocumentException e) {
-            e.printStackTrace();
+            log.error("Error setting header table widths: {}", e.getMessage(), e);
         }
 
         // Column 1: Logo

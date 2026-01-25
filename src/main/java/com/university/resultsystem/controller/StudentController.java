@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import com.itextpdf.text.DocumentException;
 
 import java.util.UUID;
 
@@ -45,7 +46,7 @@ public class StudentController {
                 Student student = studentRepository.findByUserId(user.getId())
                                 .orElseThrow(() -> new RuntimeException("Student profile not found"));
 
-                return ResponseEntity.ok(resultService.getResultDto(student.getId(), sessionId, semester));
+                return ResponseEntity.ok(resultService.getResultDto(student.getId(), sessionId, semester, true));
         }
 
         @GetMapping("/result/detailed")
@@ -60,7 +61,7 @@ public class StudentController {
                 Student student = studentRepository.findByUserId(user.getId())
                                 .orElseThrow(() -> new RuntimeException("Student profile not found"));
 
-                return ResponseEntity.ok(resultService.getDetailedResult(student.getId(), sessionId, semester));
+                return ResponseEntity.ok(resultService.getDetailedResult(student.getId(), sessionId, semester, true));
         }
 
         @GetMapping("/result/pdf")
@@ -75,24 +76,25 @@ public class StudentController {
                 Student student = studentRepository.findByUserId(user.getId())
                                 .orElseThrow(() -> new RuntimeException("Student profile not found"));
 
-                DetailedResultDto result = resultService.getDetailedResult(student.getId(), sessionId, semester);
+                DetailedResultDto result = resultService.getDetailedResult(student.getId(), sessionId, semester, true);
 
+                byte[] pdfBytes;
                 try {
-                        byte[] pdfBytes = pdfService.generateResultSlip(result);
-
-                        String filename = "result_" + result.getMatricNo() + "_"
-                                        + result.getSessionName().replace("/", "-")
-                                        + ".pdf";
-
-                        String dispositionType = "download".equals(mode) ? "attachment" : "inline";
-
-                        return ResponseEntity.ok()
-                                        .header(HttpHeaders.CONTENT_DISPOSITION,
-                                                        dispositionType + "; filename=" + filename)
-                                        .contentType(MediaType.APPLICATION_PDF)
-                                        .body(pdfBytes);
-                } catch (Exception e) {
-                        throw new RuntimeException("Error generating PDF", e);
+                        pdfBytes = pdfService.generateResultSlip(result);
+                } catch (DocumentException e) {
+                        throw new RuntimeException("Failed to generate PDF result slip", e);
                 }
+
+                String filename = "result_" + result.getMatricNo() + "_"
+                                + result.getSessionName().replace("/", "-")
+                                + ".pdf";
+
+                String dispositionType = "download".equals(mode) ? "attachment" : "inline";
+
+                return ResponseEntity.ok()
+                                .header(HttpHeaders.CONTENT_DISPOSITION,
+                                                dispositionType + "; filename=" + filename)
+                                .contentType(MediaType.APPLICATION_PDF)
+                                .body(pdfBytes);
         }
 }

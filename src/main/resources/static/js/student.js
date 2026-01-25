@@ -65,7 +65,21 @@ export function renderStudentDashboard(user) {
         window.location.reload();
     });
 
-    const handleResultAction = (action) => {
+    const getFriendlyErrorMessage = (msg) => {
+        if (!msg) return "An unexpected error occurred. Please try again later.";
+        
+        const mapping = {
+            "Result not found": "Your result for this semester is not available yet.",
+            "Results for this semester have not been published yet.": "Results for this semester have not been released by the admin yet.",
+            "Student not found": "We couldn't find your student profile. Please contact the administrator.",
+            "Session not found": "The selected academic session is invalid.",
+            "Access denied": "You do not have permission to view this result."
+        };
+
+        return mapping[msg] || msg;
+    };
+
+    const handleResultAction = async (action) => {
         const sessionId = document.getElementById('sessionSelect').value;
         const semester = document.getElementById('semesterSelect').value;
         
@@ -75,13 +89,35 @@ export function renderStudentDashboard(user) {
         }
 
         const mode = action === 'download' ? 'download' : 'view';
-        const pdfUrl = `/api/student/result/pdf?sessionId=${sessionId}&semester=${semester}&mode=${mode}`;
         
-        if (mode === 'view') {
-            window.open(pdfUrl, '_blank');
-        } else {
-            // Trigger download by valid navigation or creating a temporary link
-            window.location.href = pdfUrl;
+        try {
+            const checkResponse = await fetch(`/api/student/result?sessionId=${sessionId}&semester=${semester}`);
+            if (!checkResponse.ok) {
+                let errorMessage = "Result not found or not yet published.";
+                
+                // Try to parse JSON error message
+                const contentType = checkResponse.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const errorJson = await checkResponse.json();
+                    errorMessage = getFriendlyErrorMessage(errorJson.message);
+                } else {
+                    errorMessage = await checkResponse.text() || errorMessage;
+                }
+                
+                alert(errorMessage);
+                return;
+            }
+            
+            const pdfUrl = `/api/student/result/pdf?sessionId=${sessionId}&semester=${semester}&mode=${mode}`;
+            
+            if (mode === 'view') {
+                window.open(pdfUrl, '_blank');
+            } else {
+                window.location.href = pdfUrl;
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error checking result status.");
         }
     };
 

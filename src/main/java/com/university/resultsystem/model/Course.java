@@ -39,6 +39,5 @@ public class Course {
 
     @ManyToMany
     @JoinTable(name = "course_lecturers", joinColumns = @JoinColumn(name = "course_id"), inverseJoinColumns = @JoinColumn(name = "lecturer_id"))
-    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Lecturer> lecturers = new ArrayList<>();
 }

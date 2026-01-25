@@ -5,14 +5,19 @@ import com.university.resultsystem.dto.DetailedResultDto;
 import com.university.resultsystem.dto.ResultDto;
 import com.university.resultsystem.model.*;
 import com.university.resultsystem.repository.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class ResultService {
 
@@ -23,11 +28,12 @@ public class ResultService {
     private final AcademicSessionRepository sessionRepository;
     private final CourseResultRepository courseResultRepository;
     private final GradeCalculator gradeCalculator;
+    private final TransactionTemplate transactionTemplate;
 
     public ResultService(ResultRepository resultRepository, ScoreRepository scoreRepository,
             CourseRegistrationRepository registrationRepository, StudentRepository studentRepository,
             AcademicSessionRepository sessionRepository, CourseResultRepository courseResultRepository,
-            GradeCalculator gradeCalculator) {
+            GradeCalculator gradeCalculator, PlatformTransactionManager transactionManager) {
         this.resultRepository = resultRepository;
         this.scoreRepository = scoreRepository;
         this.registrationRepository = registrationRepository;
@@ -35,6 +41,7 @@ public class ResultService {
         this.sessionRepository = sessionRepository;
         this.courseResultRepository = courseResultRepository;
         this.gradeCalculator = gradeCalculator;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     @Transactional
@@ -52,7 +59,11 @@ public class ResultService {
                 .filter(reg -> reg.getSession().getId().equals(sessionId) && reg.getSemester().equals(semester))
                 .collect(Collectors.toList());
 
-        // Calculate current semester metrics
+        // Identify if a result already exists for this semester
+        Result existingResult = resultRepository.findByStudentIdAndSessionIdAndSemester(studentId, sessionId, semester)
+                .orElse(null);
+
+        // Initialize current semester metrics to literal zero
         int tcc = 0;
         int tce = 0;
         double tpe = 0.0;
@@ -62,10 +73,10 @@ public class ResultService {
         for (CourseRegistration reg : currentRegs) {
             Score score = scoreRepository.findByRegistrationId(reg.getId()).orElse(null);
 
-            int units = reg.getCourse().getUnits();
-            tcc += units;
-
             if (score != null) {
+                int units = reg.getCourse().getUnits();
+                tcc += units;
+
                 double totalScore = score.getCaScore() + score.getExamScore();
                 String grade = gradeCalculator.calculateGrade(totalScore);
                 double gradePoint = gradeCalculator.getGradePoint(grade);
@@ -91,49 +102,58 @@ public class ResultService {
 
         double gpa = (tcc > 0) ? tpe / tcc : 0.0;
 
-        // Get previous semester result (from same session, previous semester)
-        Result previousResult = null;
-        Integer previousTcc = null;
-        Integer previousTce = null;
-        Double previousTpe = null;
-        Double previousGpa = null;
+        // Initialize cumulative metrics to literal zero (Atomic Consolidation)
+        int ccc = 0;
+        int cce = 0;
+        double cpe = 0.0;
 
-        if (semester > 1) {
-            previousResult = resultRepository
-                    .findByStudentIdAndSessionIdAndSemester(studentId, sessionId, semester - 1)
-                    .orElse(null);
+        // Map to hold unique unit/point data for each logical semester
+        // Key: Super-Normalized "SESSION|SEMESTER" (ignores slashes, spaces, case)
+        java.util.Map<String, RecordSums> logicalSemesterSums = new java.util.HashMap<>();
 
-            if (previousResult != null) {
-                previousTcc = previousResult.getTcc();
-                previousTce = previousResult.getTce();
-                previousTpe = previousResult.getTpe();
-                previousGpa = previousResult.getGpa();
-            }
-        }
+        // 1. Add current (in-memory) calculation as the DEFINITIVE truth for this
+        // semester
+        final String currentSessionNormalized = session.getName().replaceAll("[^a-zA-Z0-9]", "").toUpperCase();
+        final String currentKey = currentSessionNormalized + "|" + semester;
+        logicalSemesterSums.put(currentKey, new RecordSums(tcc, tce, tpe));
 
-        // Calculate cumulative metrics (all semesters from all sessions)
-        int ccc = tcc;
-        int cce = tce;
-        double cpe = tpe;
+        // 2. Fetch all historical results and merge them
+        List<Result> allStudentResults = resultRepository.findByStudentId(studentId);
+        for (Result r : allStudentResults) {
+            String rSessionNormalized = r.getSession().getName().replaceAll("[^a-zA-Z0-9]", "").toUpperCase();
+            String key = rSessionNormalized + "|" + r.getSemester();
 
-        // Get all previous results for this student (excluding current one)
-        List<Result> allPreviousResults = resultRepository.findByStudentId(studentId);
-        for (Result prevRes : allPreviousResults) {
-            // Skip if it's the current result we're processing
-            if (prevRes.getSession().getId().equals(sessionId) && prevRes.getSemester().equals(semester)) {
+            // Skip the semester we're currently calculating (already in map as truth)
+            if (key.equals(currentKey)) {
                 continue;
             }
 
-            ccc += (prevRes.getTcc() != null) ? prevRes.getTcc() : 0;
-            cce += (prevRes.getTce() != null) ? prevRes.getTce() : 0;
-            cpe += (prevRes.getTpe() != null) ? prevRes.getTpe() : 0.0;
+            // Consolidate other semesters (ignores ghosts/duplicates by overwriting)
+            logicalSemesterSums.put(key, new RecordSums(
+                    (r.getTcc() != null) ? r.getTcc() : 0,
+                    (r.getTce() != null) ? r.getTce() : 0,
+                    (r.getTpe() != null) ? r.getTpe() : 0.0));
+        }
+
+        // 3. Perform final accumulation starting from literal zero
+        for (RecordSums sums : logicalSemesterSums.values()) {
+            ccc += sums.tcc;
+            cce += sums.tce;
+            cpe += sums.tpe;
         }
 
         double cgpa = (ccc > 0) ? cpe / ccc : 0.0;
 
+        // Session-Agnostic Previous Metrics Calculation
+        // Previous = Cumulative (Total History) - Current (This Semester)
+        // This guarantees continuity across sessions/years without complex DB lookups
+        int previousTccVal = ccc - tcc;
+        int previousTceVal = cce - tce;
+        double previousTpeVal = cpe - tpe;
+        double previousCgpaVal = (previousTccVal > 0) ? previousTpeVal / previousTccVal : 0.0;
+
         // Create or update Result
-        Result result = resultRepository.findByStudentIdAndSessionIdAndSemester(studentId, sessionId, semester)
-                .orElse(new Result());
+        Result result = (existingResult != null) ? existingResult : new Result();
 
         if (result.getId() == null) {
             result.setStudent(student);
@@ -147,11 +167,18 @@ public class ResultService {
         result.setTpe(Math.round(tpe * 100.0) / 100.0);
         result.setGpa(Math.round(gpa * 100.0) / 100.0);
 
-        // Set previous semester metrics
-        result.setPreviousTcc(previousTcc);
-        result.setPreviousTce(previousTce);
-        result.setPreviousTpe(previousTpe != null ? Math.round(previousTpe * 100.0) / 100.0 : null);
-        result.setPreviousGpa(previousGpa != null ? Math.round(previousGpa * 100.0) / 100.0 : null);
+        // Set previous semester metrics (Mathematically Derived)
+        if (previousTccVal > 0) {
+            result.setPreviousTcc(previousTccVal);
+            result.setPreviousTce(previousTceVal);
+            result.setPreviousTpe(Math.round(previousTpeVal * 100.0) / 100.0);
+            result.setPreviousGpa(Math.round(previousCgpaVal * 100.0) / 100.0);
+        } else {
+            result.setPreviousTcc(null);
+            result.setPreviousTce(null);
+            result.setPreviousTpe(null);
+            result.setPreviousGpa(null);
+        }
 
         // Set cumulative metrics
         result.setCcc(ccc);
@@ -172,6 +199,9 @@ public class ResultService {
 
         result = resultRepository.save(result);
 
+        // Clear existing CourseResult entries to avoid duplicates
+        courseResultRepository.deleteByResultId(result.getId());
+
         // Save CourseResult entries
         for (CourseResult courseResult : courseResults) {
             courseResult.setResult(result);
@@ -181,13 +211,32 @@ public class ResultService {
         return result;
     }
 
+    @Transactional
+    public void publishResults(UUID sessionId, Integer semester) {
+        List<Result> results = resultRepository.findBySessionIdAndSemester(sessionId, semester);
+        for (Result result : results) {
+            result.setPublished(true);
+        }
+        resultRepository.saveAll(results);
+    }
+
     public DetailedResultDto getDetailedResult(UUID studentId, UUID sessionId, Integer semester) {
+        return getDetailedResult(studentId, sessionId, semester, false);
+    }
+
+    public DetailedResultDto getDetailedResult(UUID studentId, UUID sessionId, Integer semester,
+            boolean checkPublished) {
         Result result = resultRepository.findByStudentIdAndSessionIdAndSemester(studentId, sessionId, semester)
                 .orElseThrow(() -> new RuntimeException("Result not found"));
+
+        if (checkPublished && !result.isPublished()) {
+            throw new RuntimeException("Results for this semester have not been published yet.");
+        }
 
         Student student = result.getStudent();
 
         DetailedResultDto dto = new DetailedResultDto();
+        // ... rest of the method (unchanged)
 
         // Student info
         dto.setMatricNo(student.getMatricNo());
@@ -239,8 +288,16 @@ public class ResultService {
     }
 
     public ResultDto getResultDto(UUID studentId, UUID sessionId, Integer semester) {
+        return getResultDto(studentId, sessionId, semester, false);
+    }
+
+    public ResultDto getResultDto(UUID studentId, UUID sessionId, Integer semester, boolean checkPublished) {
         Result result = resultRepository.findByStudentIdAndSessionIdAndSemester(studentId, sessionId, semester)
                 .orElseThrow(() -> new RuntimeException("Result not found"));
+
+        if (checkPublished && !result.isPublished()) {
+            throw new RuntimeException("Results for this semester have not been published yet.");
+        }
 
         ResultDto dto = new ResultDto();
         dto.setStudentId(result.getStudent().getId());
@@ -270,15 +327,17 @@ public class ResultService {
 
         for (Student student : allStudents) {
             try {
-                processResult(student.getId(), sessionId, semester);
+                final Student currentStudent = student;
+                transactionTemplate.execute(status -> {
+                    processResult(currentStudent.getId(), sessionId, semester);
+                    return null;
+                });
                 successCount++;
             } catch (Exception e) {
                 failureCount++;
-                String errorMsg = "Failed to process result for student " + student.getMatricNo() +
-                        ": " + e.getClass().getSimpleName() + " - " + e.getMessage();
-                errors.add(errorMsg);
-                System.err.println(errorMsg);
-                e.printStackTrace();
+                String errorMsg = "Failed to process result for student " + student.getMatricNo();
+                errors.add(errorMsg + ": " + e.getMessage());
+                log.error("{}: {}", errorMsg, e.getMessage(), e);
             }
         }
 
@@ -292,5 +351,24 @@ public class ResultService {
         summary.put("errors", errors);
 
         return summary;
+    }
+
+    @Transactional
+    public void deleteAllResults() {
+        log.warn("Wiping all result data from the database...");
+        courseResultRepository.deleteAll();
+        resultRepository.deleteAll();
+    }
+
+    private static class RecordSums {
+        int tcc;
+        int tce;
+        double tpe;
+
+        RecordSums(int tcc, int tce, double tpe) {
+            this.tcc = tcc;
+            this.tce = tce;
+            this.tpe = tpe;
+        }
     }
 }

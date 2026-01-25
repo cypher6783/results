@@ -42,6 +42,15 @@ async function router() {
 window.addEventListener('hashchange', router);
 window.addEventListener('load', router);
 
+// Service Worker Registration
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(reg => console.log('Service Worker registered', reg))
+            .catch(err => console.log('Service Worker NOT registered', err));
+    });
+}
+
 function renderLogin() {
     app.innerHTML = `
         <div class="login-container">

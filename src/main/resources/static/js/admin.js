@@ -38,6 +38,7 @@ export function renderAdminDashboard(user) {
                     <p>Password reset and bulk operations</p>
                     <button class="btn btn-primary" style="margin-top: 1rem" id="changePasswordBtn">Change User Password</button>
                     <button class="btn" style="margin-top: 0.5rem" id="bulkResultsBtn">Generate Bulk Results</button>
+                    <button class="btn btn-danger" style="margin-top: 0.5rem; width: 100%;" id="resetResultsBtn">Reset All Results</button>
                     <button class="btn" style="margin-top: 0.5rem" id="changeOwnPasswordBtn">Change My Password</button>
                 </div>
             </div>
@@ -132,6 +133,49 @@ export function renderAdminDashboard(user) {
                 </form>
             </div>
 
+            <!-- Edit Course Form -->
+            <div id="editCourseForm" class="card" style="margin-top: 2rem; display: none;">
+                <h3>Edit Course</h3>
+                <form id="editCourseFormData">
+                    <input type="hidden" name="id">
+                    <div class="input-group">
+                        <label>Course Code</label>
+                        <input type="text" name="code" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Title</label>
+                        <input type="text" name="title" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Units</label>
+                        <input type="number" name="units" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Semester</label>
+                        <select name="semester">
+                            <option value="1">First</option>
+                            <option value="2">Second</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Level</label>
+                        <input type="number" name="level" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Department</label>
+                        <input type="text" name="department" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Lecturer</label>
+                        <select name="lecturerId" id="editLecturerSelect" required>
+                            <option value="">Loading lecturers...</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Course</button>
+                    <button type="button" class="btn" id="cancelEditCourseBtn">Cancel</button>
+                </form>
+            </div>
+
             <!-- Bulk Upload Students Form -->
             <div id="bulkUploadStudentsForm" class="card" style="margin-top: 2rem; display: none;">
                 <h3>Bulk Upload Students (CSV)</h3>
@@ -153,8 +197,8 @@ export function renderAdminDashboard(user) {
             <div id="bulkUploadCoursesForm" class="card" style="margin-top: 2rem; display: none;">
                 <h3>Bulk Upload Courses (CSV)</h3>
                 <p style="color: #666; margin-bottom: 1rem;">
-                    CSV Format: <code>Code,Title,Units,Semester,Level,Department</code><br>
-                    Example: <code>CSC101,Introduction to Computing,3,1,100,Computer Science</code>
+                    CSV Format: <code>Code,Title,Units,Semester,Level,Department,LecturerStaffId</code><br>
+                    Example: <code>CSC101,Introduction to Computing,3,1,100,Computer Science,STAFF001</code>
                 </p>
                 <form id="bulkCoursesForm">
                     <div class="input-group">
@@ -334,6 +378,31 @@ export function renderAdminDashboard(user) {
     smoothScrollTo(form);
   });
 
+  document.getElementById("resetResultsBtn").addEventListener("click", async () => {
+    const confirmation = confirm(
+      "CRITICAL ACTION: This will delete ALL processed results and CGPA data for ALL students. This cannot be undone.\n\nAre you absolutely sure you want to reset everything and start afresh?"
+    );
+
+    if (confirmation) {
+      try {
+        const response = await fetch("/api/admin/reset-results", {
+          method: "POST",
+        });
+
+        if (response.ok) {
+          alert("All results have been wiped. You can now start processing results afresh.");
+          window.location.reload();
+        } else {
+          const error = await response.text();
+          alert("Failed to reset results: " + error);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error resetting results");
+      }
+    }
+  });
+
   // Cancel Buttons
   document.getElementById("cancelStudentBtn").addEventListener("click", () => {
     document.getElementById("addStudentForm").style.display = "none";
@@ -365,6 +434,10 @@ export function renderAdminDashboard(user) {
 
   document.getElementById("cancelOwnPasswordBtn").addEventListener("click", () => {
     document.getElementById("changeOwnPasswordForm").style.display = "none";
+  });
+
+  document.getElementById("cancelEditCourseBtn").addEventListener("click", () => {
+    document.getElementById("editCourseForm").style.display = "none";
   });
 
   // Form Submissions
@@ -644,6 +717,38 @@ export function renderAdminDashboard(user) {
       alert("Error changing password");
     }
   });
+
+  // Edit Course Form Submission
+  document.getElementById("editCourseFormData").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+    const id = data.id;
+    delete data.id;
+    
+    data.units = parseInt(data.units);
+    data.semester = parseInt(data.semester);
+    data.level = parseInt(data.level);
+
+    try {
+      const response = await fetch(`/api/admin/courses/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        alert("Course updated successfully");
+        document.getElementById("editCourseForm").style.display = "none";
+        await loadCourses();
+      } else {
+        await handleResponseError(response, "Failed to update course.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error updating course");
+    }
+  });
 }
 
 function hideAllSections() {
@@ -658,6 +763,7 @@ function hideAllSections() {
   document.getElementById("changePasswordForm").style.display = "none";
   document.getElementById("bulkResultsForm").style.display = "none";
   document.getElementById("changeOwnPasswordForm").style.display = "none";
+  document.getElementById("editCourseForm").style.display = "none";
 }
 
 async function loadStudents() {
@@ -766,6 +872,8 @@ async function loadCourses() {
                         <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Units</th>
                         <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Level</th>
                         <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Department</th>
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Lecturer</th>
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -778,6 +886,15 @@ async function loadCourses() {
                             <td style="padding: 0.75rem; border-bottom: 1px solid #eee;">${course.units}</td>
                             <td style="padding: 0.75rem; border-bottom: 1px solid #eee;">${course.level}</td>
                             <td style="padding: 0.75rem; border-bottom: 1px solid #eee;">${course.department}</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid #eee;">${
+                              course.lecturers && course.lecturers.length > 0
+                                ? course.lecturers.map(l => l.user.fullName).join(", ")
+                                : "Not Assigned"
+                            }</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid #eee;">
+                                <button class="btn btn-sm btn-edit-course" data-course='${JSON.stringify(course)}'>Edit</button>
+                                <button class="btn btn-sm btn-danger btn-delete-course" data-id="${course.id}">Delete</button>
+                            </td>
                         </tr>
                     `
                       )
@@ -787,6 +904,38 @@ async function loadCourses() {
         `;
 
     document.getElementById("coursesTable").innerHTML = table;
+    
+    // Add Event Listeners for Edit and Delete buttons
+    document.querySelectorAll(".btn-edit-course").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            const course = JSON.parse(e.target.dataset.course);
+            showEditCourseForm(course);
+        });
+    });
+
+    document.querySelectorAll(".btn-delete-course").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            if (confirm("Are you sure you want to delete this course?")) {
+                const id = e.target.dataset.id;
+                try {
+                    const response = await fetch(`/api/admin/courses/${id}`, {
+                        method: "DELETE"
+                    });
+                    if (response.ok) {
+                        alert("Course deleted successfully");
+                        await loadCourses();
+                    } else {
+                        const error = await response.text();
+                        alert("Failed to delete course: " + error);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("Error deleting course");
+                }
+            }
+        });
+    });
+
     const listElement = document.getElementById("viewCoursesList");
     listElement.style.display = "block";
     smoothScrollTo(listElement);
@@ -836,10 +985,52 @@ function displayResultsSummary(result) {
     `;
   }
 
+  if (result.successCount > 0) {
+    html += `
+      <div style="margin-top: 1rem;">
+        <button class="btn btn-warning" id="publishResultsBtn" data-session="${result.sessionId}" data-semester="${result.semester}">
+          Publish Results to Students
+        </button>
+      </div>
+    `;
+  }
+
   html += `</div>`;
   
   output.innerHTML = html;
   output.style.display = "block";
+
+  // Add event listener for Publish button
+  const publishBtn = document.getElementById("publishResultsBtn");
+  if (publishBtn) {
+    publishBtn.addEventListener("click", async (e) => {
+      const sessionId = e.target.dataset.session;
+      const semester = e.target.dataset.semester;
+
+      if (confirm("Are you sure you want to publish these results to students? This action cannot be easily undone.")) {
+        try {
+          const response = await fetch(`/api/admin/publish-results?sessionId=${sessionId}&semester=${semester}`, {
+            method: "POST"
+          });
+
+          if (response.ok) {
+            alert("Results published successfully!");
+            e.target.disabled = true;
+            e.target.innerText = "Results Published";
+            e.target.style.background = "#16a34a";
+            e.target.style.color = "white";
+          } else {
+            const error = await response.text();
+            alert("Failed to publish results: " + error);
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Error publishing results");
+        }
+      }
+    });
+  }
+
   smoothScrollTo(output);
 }
 
@@ -865,3 +1056,77 @@ function smoothScrollTo(element) {
     element.scrollIntoView({ behavior: "smooth", block: "start" });
   }, 100);
 }
+
+async function showEditCourseForm(course) {
+    hideAllSections();
+    await populateEditLecturerDropdown();
+    
+    const formContainer = document.getElementById("editCourseForm");
+    const form = document.getElementById("editCourseFormData");
+    
+    form.id.value = course.id;
+    form.code.value = course.code;
+    form.title.value = course.title;
+    form.units.value = course.units;
+    form.semester.value = course.semester;
+    form.level.value = course.level;
+    form.department.value = course.department;
+    
+    // Set lecturer if assigned
+    if (course.lecturers && course.lecturers.length > 0) {
+        form.lecturerId.value = course.lecturers[0].id;
+    } else {
+        form.lecturerId.value = "";
+    }
+    
+    formContainer.style.display = "block";
+    smoothScrollTo(formContainer);
+}
+
+async function populateEditLecturerDropdown() {
+  try {
+    const response = await fetch("/api/admin/lecturers/entities");
+    const lecturers = await response.json();
+
+    const select = document.getElementById("editLecturerSelect");
+    select.innerHTML = `
+      <option value="">Select a lecturer</option>
+      ${lecturers.map(lecturer => `<option value="${lecturer.id}">${lecturer.user.fullName} (${lecturer.staffId})</option>`).join("")}
+    `;
+  } catch (err) {
+    console.error(err);
+    alert("Error loading lecturers");
+  }
+}
+const getFriendlyErrorMessage = (msg) => {
+  if (!msg) return "An unexpected error occurred. Please try again later.";
+  
+  const mapping = {
+    "Course not found": "The course you are trying to update could not be found.",
+    "Lecturer not found": "The selected lecturer profile is invalid.",
+    "Session not found": "The selected academic session could not be found.",
+    "Duplicate entry": "This record already exists in the system.",
+    "Internal Server Error": "Something went wrong on our end. Please contact support."
+  };
+
+  return mapping[msg] || msg;
+};
+
+async function handleResponseError(response, defaultMsg) {
+  let errorMessage = defaultMsg;
+  try {
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      const errorJson = await response.json();
+      errorMessage = getFriendlyErrorMessage(errorJson.message);
+    } else {
+      errorMessage = await response.text() || errorMessage;
+    }
+  } catch (e) {
+    console.error("Error parsing error response", e);
+  }
+  alert(errorMessage);
+}
+
+// Update fetch calls to use handleResponseError...
+// (This is a simplified replacement for demonstration, I'll apply it specifically to a few key locations)

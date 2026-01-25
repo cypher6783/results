@@ -18,4 +18,8 @@ public interface CourseRegistrationRepository extends JpaRepository<CourseRegist
 
     Optional<CourseRegistration> findByStudentAndCourseAndSession(com.university.resultsystem.model.Student student,
             com.university.resultsystem.model.Course course, com.university.resultsystem.model.AcademicSession session);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    void deleteByCourseId(UUID courseId);
 }

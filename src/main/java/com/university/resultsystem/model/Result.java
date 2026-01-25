@@ -69,8 +69,12 @@ public class Result {
     @Column
     private Double cgpa;
 
-    @Column
+    @Column(nullable = false)
     private String status; // PASS, FAIL, PROBATION
+
+    @Column(nullable = false)
+    @org.hibernate.annotations.ColumnDefault("false")
+    private boolean published = false;
 
     // Legacy fields (kept for backward compatibility)
     @Column
