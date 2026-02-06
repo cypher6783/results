@@ -39,6 +39,7 @@ export function renderAdminDashboard(user) {
                     <button class="btn btn-primary" style="margin-top: 1rem" id="changePasswordBtn">Change User Password</button>
                     <button class="btn" style="margin-top: 0.5rem" id="bulkResultsBtn">Generate Bulk Results</button>
                     <button class="btn btn-danger" style="margin-top: 0.5rem; width: 100%;" id="resetResultsBtn">Reset All Results</button>
+                    <button class="btn" style="margin-top: 0.5rem" id="searchResultBtn">Search Student Result</button>
                     <button class="btn" style="margin-top: 0.5rem" id="changeOwnPasswordBtn">Change My Password</button>
                 </div>
             </div>
@@ -274,6 +275,33 @@ export function renderAdminDashboard(user) {
                 <div id="resultsOutput" style="margin-top: 1rem; display: none;"></div>
             </div>
 
+            <!-- Search Student Result Form -->
+            <div id="searchResultForm" class="card" style="margin-top: 2rem; display: none;">
+                <h3>Search Student Result</h3>
+                <form id="findStudentResultForm">
+                    <div class="input-group">
+                        <label>Matric Number</label>
+                        <input type="text" name="matricNo" placeholder="e.g., 2024/001" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Academic Session</label>
+                        <select name="sessionId" id="searchSessionSelect" required>
+                            <option value="">Loading sessions...</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Semester</label>
+                        <select name="semester" required>
+                            <option value="1">First Semester</option>
+                            <option value="2">Second Semester</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Search Result</button>
+                    <button type="button" class="btn" id="cancelSearchBtn">Cancel</button>
+                </form>
+                <div id="singleResultOutput" style="margin-top: 1rem; display: none;"></div>
+            </div>
+
             <!-- Admin Self Password Change Form -->
             <div id="changeOwnPasswordForm" class="card" style="margin-top: 2rem; display: none;">
                 <h3>Change My Password</h3>
@@ -365,8 +393,16 @@ export function renderAdminDashboard(user) {
 
   document.getElementById("bulkResultsBtn").addEventListener("click", async () => {
     hideAllSections();
-    await loadSessions();
+    await loadSessions("sessionSelect");
     const form = document.getElementById("bulkResultsForm");
+    form.style.display = "block";
+    smoothScrollTo(form);
+  });
+
+  document.getElementById("searchResultBtn").addEventListener("click", async () => {
+    hideAllSections();
+    await loadSessions("searchSessionSelect");
+    const form = document.getElementById("searchResultForm");
     form.style.display = "block";
     smoothScrollTo(form);
   });
@@ -430,6 +466,11 @@ export function renderAdminDashboard(user) {
 
   document.getElementById("cancelResultsBtn").addEventListener("click", () => {
     document.getElementById("bulkResultsForm").style.display = "none";
+  });
+
+  document.getElementById("cancelSearchBtn").addEventListener("click", () => {
+    document.getElementById("searchResultForm").style.display = "none";
+    document.getElementById("singleResultOutput").style.display = "none";
   });
 
   document.getElementById("cancelOwnPasswordBtn").addEventListener("click", () => {
@@ -749,6 +790,30 @@ export function renderAdminDashboard(user) {
       alert("Error updating course");
     }
   });
+
+  // Search Student Result Form
+  document.getElementById("findStudentResultForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const matricNo = formData.get("matricNo");
+    const sessionId = formData.get("sessionId");
+    const semester = formData.get("semester");
+
+    try {
+      const response = await fetch(`/api/admin/student-result?matricNo=${encodeURIComponent(matricNo)}&sessionId=${sessionId}&semester=${semester}`);
+
+      if (response.ok) {
+        const result = await response.json();
+        renderAdminResultView(result);
+      } else {
+        const error = await response.text();
+        alert("Failed to fetch result: " + error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error searching result");
+    }
+  });
 }
 
 function hideAllSections() {
@@ -764,35 +829,71 @@ function hideAllSections() {
   document.getElementById("bulkResultsForm").style.display = "none";
   document.getElementById("changeOwnPasswordForm").style.display = "none";
   document.getElementById("editCourseForm").style.display = "none";
+  document.getElementById("searchResultForm").style.display = "none";
 }
 
 async function loadStudents() {
   try {
-    const response = await fetch("/api/admin/students");
+    const response = await fetch("/api/admin/students/details");
     const students = await response.json();
 
-    const table = `
+    // Group students by level
+    const studentsByLevel = students.reduce((acc, student) => {
+      const level = student.level || "Unknown Level";
+      if (!acc[level]) {
+        acc[level] = [];
+      }
+      acc[level].push(student);
+      return acc;
+    }, {});
+
+    // Sort levels
+    const sortedLevels = Object.keys(studentsByLevel).sort((a, b) => {
+      // Handle numeric levels for proper sorting, put "Unknown" last
+      if (a === "Unknown Level") return 1;
+      if (b === "Unknown Level") return -1;
+      return parseInt(a) - parseInt(b);
+    });
+
+    let htmlContent = "";
+
+    if (students.length === 0) {
+      htmlContent = "<p>No students found.</p>";
+    } else {
+      sortedLevels.forEach(level => {
+        const levelStudents = studentsByLevel[level];
+        
+        htmlContent += `
+          <div style="margin-bottom: 2rem;">
+            <h4 style="border-bottom: 2px solid #0369a1; padding-bottom: 0.5rem; color: #0369a1; margin-bottom: 1rem;">
+              ${level} Level
+              <span style="font-size: 0.8rem; color: #666; font-weight: normal; margin-left: 0.5rem;">(${levelStudents.length} students)</span>
+            </h4>
             <table style="width: 100%; border-collapse: collapse;">
                 <thead>
                     <tr style="background: #f5f5f5;">
                         <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Full Name</th>
-                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Username</th>
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Matric Number</th>
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Department</th>
                         <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${students
+                    ${levelStudents
                       .map(
                         (student) => `
                         <tr>
                             <td style="padding: 0.75rem; border-bottom: 1px solid #eee;">${
-                              student.fullName
+                              student.user.fullName
                             }</td>
                             <td style="padding: 0.75rem; border-bottom: 1px solid #eee;">${
-                              student.username
+                              student.matricNo
                             }</td>
                             <td style="padding: 0.75rem; border-bottom: 1px solid #eee;">${
-                              student.active ? "Active" : "Inactive"
+                              student.department
+                            }</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid #eee;">${
+                              student.user.active ? "Active" : "Inactive"
                             }</td>
                         </tr>
                     `
@@ -800,9 +901,12 @@ async function loadStudents() {
                       .join("")}
                 </tbody>
             </table>
+          </div>
         `;
+      });
+    }
 
-    document.getElementById("studentsTable").innerHTML = table;
+    document.getElementById("studentsTable").innerHTML = htmlContent;
     const listElement = document.getElementById("viewStudentsList");
     listElement.style.display = "block";
     smoothScrollTo(listElement);
@@ -945,12 +1049,12 @@ async function loadCourses() {
   }
 }
 
-async function loadSessions() {
+async function loadSessions(selectId = "sessionSelect") {
   try {
     const response = await fetch("/api/admin/sessions");
     const sessions = await response.json();
 
-    const select = document.getElementById("sessionSelect");
+    const select = document.getElementById(selectId);
     select.innerHTML = `
       <option value="">Select a session</option>
       ${sessions.map(session => `<option value="${session.id}">${session.name}</option>`).join("")}
@@ -1032,6 +1136,152 @@ function displayResultsSummary(result) {
   }
 
   smoothScrollTo(output);
+}
+
+function renderAdminResultView(result) {
+    const output = document.getElementById("singleResultOutput");
+    
+    // Helper to format numbers
+    const formatScore = (score, grade) => `${score.toFixed(0)}${grade}`;
+    const formatPoint = (point) => point.toFixed(2);
+    
+    // Generate Course Rows
+    const courseRows = result.courses.map(c => `
+        <tr>
+            <td>${c.code}</td>
+            <td>${c.title}</td>
+            <td>${c.unit}</td>
+            <td>${formatScore(c.score, c.grade)}</td>
+            <td>${formatPoint(c.pointEarned)}</td>
+            <td>${c.remark}</td>
+        </tr>
+    `).join('');
+
+    const html = `
+        <div class="result-slip" style="margin-top: 2rem;">
+            <div class="result-header">
+                <div class="uni-name">JOSEPH SARWUAN TARKA UNIVERSITY</div>
+                <div class="sub-header">P.M.B 2373, MAKURDI</div>
+                <div class="sub-header">COLLEGE OF PHYSICAL SCIENCES</div>
+                <div class="sub-header">DEPARTMENT OF COMPUTER SCIENCE</div>
+                
+                <div class="statement-title">
+                    STATEMENT OF EXAMINATION RESULT FOR ${result.semester === 1 ? 'FIRST' : 'SECOND'} SEMESTER ${result.sessionName}
+                </div>
+            </div>
+
+            <div style="margin-bottom: 0.5rem; font-weight: bold;">COURSE: ${result.course}</div>
+            <div style="margin-bottom: 1rem; font-weight: bold;">LEVEL: ${result.level}</div>
+
+            <div class="student-info-grid">
+                <div class="info-cell info-label">REGISTRATION NUMBER:</div>
+                <div class="info-cell" style="font-weight: bold;">${result.matricNo}</div>
+                <div class="info-cell info-label">FULL NAME:</div>
+                <div class="info-cell" style="font-weight: bold;">${result.fullName.toUpperCase()}</div>
+            </div>
+
+            <table class="result-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%">Code</th>
+                        <th style="width: 45%">Title</th>
+                        <th style="width: 10%">Unit</th>
+                        <th style="width: 10%">Score</th>
+                        <th style="width: 10%">Point Earn</th>
+                        <th style="width: 10%">Remark</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${courseRows}
+                </tbody>
+            </table>
+
+            <table class="perf-table">
+                <thead>
+                    <tr>
+                        <th colspan="8" class="perf-header">PERFORMANCE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="perf-label">TCC</td>
+                        <td class="perf-value">${result.tcc}</td>
+                        <td class="perf-label">TCE</td>
+                        <td class="perf-value">${result.tce}</td>
+                        <td class="perf-label">TPE</td>
+                        <td class="perf-value">${result.tpe.toFixed(0)}</td>
+                        <td class="perf-label">GPA</td>
+                        <td class="perf-value">${result.gpa.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td class="perf-label">Previous TCC</td>
+                        <td class="perf-value">${result.previousTcc !== null ? result.previousTcc : '-'}</td>
+                        <td class="perf-label">Previous TCE</td>
+                        <td class="perf-value">${result.previousTce !== null ? result.previousTce : '-'}</td>
+                        <td class="perf-label">Previous TPE</td>
+                        <td class="perf-value">${result.previousTpe !== null ? result.previousTpe.toFixed(0) : '-'}</td>
+                        <td class="perf-label">Previous CGPA</td>
+                        <td class="perf-value">${result.previousGpa !== null ? result.previousGpa.toFixed(2) : '-'}</td>
+                    </tr>
+                    <tr>
+                        <td class="perf-label">CCC</td>
+                        <td class="perf-value">${result.ccc}</td>
+                        <td class="perf-label">CCE</td>
+                        <td class="perf-value">${result.cce}</td>
+                        <td class="perf-label">CPE</td>
+                        <td class="perf-value">${result.cpe.toFixed(0)}</td>
+                        <td class="perf-label">CGPA</td>
+                        <td class="perf-value">${result.cgpa.toFixed(2)}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <table class="key-table">
+                <thead>
+                    <tr>
+                        <th colspan="4" class="key-header">KEY</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>TCC = Total Credit Carried</td>
+                        <td>TCE = Total Credit Earned</td>
+                        <td>TPE = Total Points Earned</td>
+                        <td>GPA = Grade Points Average</td>
+                    </tr>
+                    <tr>
+                        <td>CCC = Cummulative Credit Carried</td>
+                        <td>CCE = Cummulative Credit Earned</td>
+                        <td>CPE = Cummulative Points Earned</td>
+                        <td>CGPA = Cummulative Grade Points Averag</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="footer-section">
+                <div></div> <!-- Spacer -->
+                <div class="signature-box">
+                    <div style="margin-bottom: 0.5rem;">(Signature/Stamp)</div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 2rem; font-style: italic; font-size: 0.9rem;">
+                B. SC. COMPUTER SCIENCE
+            </div>
+            
+             <div style="text-align: right; font-size: 0.8rem; margin-top: 0.5rem;">
+                Page 1/1
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 1rem; margin-bottom: 2rem;">
+            <button class="btn btn-primary" onclick="window.print()">Print Result</button>
+        </div>
+    `;
+    
+    output.innerHTML = html;
+    output.style.display = "block";
+    smoothScrollTo(output);
 }
 
 async function populateLecturerDropdown() {

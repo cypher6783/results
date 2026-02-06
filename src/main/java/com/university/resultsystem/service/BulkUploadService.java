@@ -28,7 +28,7 @@ public class BulkUploadService {
     }
 
     @Transactional
-    public List<User> parseAndCreateStudents(MultipartFile file) {
+    public List<User> uploadStudents(MultipartFile file) {
         List<User> createdStudents = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
@@ -64,7 +64,7 @@ public class BulkUploadService {
     }
 
     @Transactional
-    public List<com.university.resultsystem.model.Course> parseAndCreateCourses(MultipartFile file) {
+    public List<com.university.resultsystem.model.Course> uploadCourses(MultipartFile file) {
         List<com.university.resultsystem.model.Course> createdCourses = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {

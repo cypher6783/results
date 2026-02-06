@@ -75,6 +75,11 @@ public class AdminController {
         return ResponseEntity.ok(userService.getAllStudents());
     }
 
+    @GetMapping("/students/details")
+    public ResponseEntity<List<Student>> getAllStudentEntities() {
+        return ResponseEntity.ok(studentRepository.findAll());
+    }
+
     // Lecturer Management
     @PostMapping("/lecturers")
     public ResponseEntity<?> addLecturer(@RequestBody LecturerRegistrationDto lecturerDto) {
@@ -97,21 +102,9 @@ public class AdminController {
 
     // Course Management
     @PostMapping("/courses")
-    public ResponseEntity<?> addCourse(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> addCourse(@RequestBody com.university.resultsystem.dto.CourseDto courseDto) {
         try {
-            Course course = new Course();
-            course.setCode((String) payload.get("code"));
-            course.setTitle((String) payload.get("title"));
-            course.setUnits((Integer) payload.get("units"));
-            course.setSemester((Integer) payload.get("semester"));
-            course.setLevel((Integer) payload.get("level"));
-            course.setDepartment((String) payload.get("department"));
-
-            String lecturerIdStr = (String) payload.get("lecturerId");
-            UUID lecturerId = (lecturerIdStr != null && !lecturerIdStr.isEmpty()) ? UUID.fromString(lecturerIdStr)
-                    : null;
-
-            return ResponseEntity.ok(courseService.createCourse(course, lecturerId));
+            return ResponseEntity.ok(courseService.createCourse(courseDto));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -133,21 +126,10 @@ public class AdminController {
     }
 
     @PutMapping("/courses/{id}")
-    public ResponseEntity<?> updateCourse(@PathVariable UUID id, @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> updateCourse(@PathVariable UUID id,
+            @RequestBody com.university.resultsystem.dto.CourseDto courseDto) {
         try {
-            Course course = new Course();
-            course.setCode((String) payload.get("code"));
-            course.setTitle((String) payload.get("title"));
-            course.setUnits((Integer) payload.get("units"));
-            course.setSemester((Integer) payload.get("semester"));
-            course.setLevel((Integer) payload.get("level"));
-            course.setDepartment((String) payload.get("department"));
-
-            String lecturerIdStr = (String) payload.get("lecturerId");
-            UUID lecturerId = (lecturerIdStr != null && !lecturerIdStr.isEmpty()) ? UUID.fromString(lecturerIdStr)
-                    : null;
-
-            return ResponseEntity.ok(courseService.updateCourse(id, course, lecturerId));
+            return ResponseEntity.ok(courseService.updateCourse(id, courseDto));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -181,6 +163,22 @@ public class AdminController {
             userService.adminChangePassword(dto.getUsername(), dto.getNewPassword());
             return ResponseEntity.ok().body("Password changed successfully. User must change password on next login.");
         } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // Individual Result Lookup
+    @GetMapping("/student-result")
+    public ResponseEntity<?> getStudentResult(
+            @RequestParam String matricNo,
+            @RequestParam UUID sessionId,
+            @RequestParam Integer semester) {
+        try {
+            Student student = studentRepository.findByMatricNo(matricNo)
+                    .orElseThrow(() -> new RuntimeException("Student not found with Matric No: " + matricNo));
+
+            return ResponseEntity.ok(resultService.getDetailedResult(student.getId(), sessionId, semester));
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
