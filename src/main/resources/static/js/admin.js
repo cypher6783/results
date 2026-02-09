@@ -1051,14 +1051,19 @@ async function loadCourses() {
 
 async function loadSessions(selectId = "sessionSelect") {
   try {
-    const response = await fetch("/api/admin/sessions");
-    const sessions = await response.json();
-
-    const select = document.getElementById(selectId);
-    select.innerHTML = `
-      <option value="">Select a session</option>
-      ${sessions.map(session => `<option value="${session.id}">${session.name}</option>`).join("")}
-    `;
+    const response = await fetch("/api/sessions");
+    if (response.ok) {
+      const sessions = await response.json();
+      const select = document.getElementById(selectId);
+      if (select) {
+        select.innerHTML = `
+          <option value="">Select a session</option>
+          ${sessions.map(session => `<option value="${session.id}">${session.name}</option>`).join("")}
+        `;
+      }
+    } else {
+      await handleResponseError(response, "Error loading sessions");
+    }
   } catch (err) {
     console.error(err);
     alert("Error loading sessions");

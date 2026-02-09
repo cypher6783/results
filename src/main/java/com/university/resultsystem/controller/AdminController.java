@@ -148,7 +148,10 @@ public class AdminController {
     // Session Management
     @GetMapping("/sessions")
     public ResponseEntity<List<AcademicSession>> getAllSessions() {
-        return ResponseEntity.ok(sessionRepository.findAll());
+        System.out.println("Admin fetching all academic sessions...");
+        List<AcademicSession> sessions = sessionRepository.findAll();
+        System.out.println("Found " + sessions.size() + " sessions.");
+        return ResponseEntity.ok(sessions);
     }
 
     @PostMapping("/sessions")
