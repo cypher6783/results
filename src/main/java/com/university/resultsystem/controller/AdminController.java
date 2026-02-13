@@ -186,6 +186,35 @@ public class AdminController {
         }
     }
 
+    // Individual Result PDF Download (for Admin)
+    @GetMapping("/student-result/pdf")
+    public ResponseEntity<byte[]> getStudentResultPdf(
+            @RequestParam String matricNo,
+            @RequestParam UUID sessionId,
+            @RequestParam Integer semester) {
+        try {
+            Student student = studentRepository.findByMatricNo(matricNo)
+                    .orElseThrow(() -> new RuntimeException("Student not found with Matric No: " + matricNo));
+
+            com.university.resultsystem.dto.DetailedResultDto result = resultService
+                    .getDetailedResult(student.getId(), sessionId, semester);
+
+            byte[] pdfBytes = pdfService.generateResultSlip(result);
+
+            String filename = "result_" + result.getMatricNo() + "_"
+                    + result.getSessionName().replace("/", "-")
+                    + ".pdf";
+
+            return ResponseEntity.ok()
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=" + filename)
+                    .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                    .body(pdfBytes);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
     // Bulk Result Generation
     @PostMapping("/bulk-results")
     public ResponseEntity<?> processBulkResults(@RequestParam UUID sessionId, @RequestParam Integer semester) {

@@ -804,7 +804,7 @@ export function renderAdminDashboard(user) {
 
       if (response.ok) {
         const result = await response.json();
-        renderAdminResultView(result);
+        renderAdminResultView(result, sessionId, semester);
       } else {
         const error = await response.text();
         alert("Failed to fetch result: " + error);
@@ -1143,7 +1143,7 @@ function displayResultsSummary(result) {
   smoothScrollTo(output);
 }
 
-function renderAdminResultView(result) {
+function renderAdminResultView(result, sessionId, semester) {
     const output = document.getElementById("singleResultOutput");
     
     // Helper to format numbers
@@ -1281,11 +1281,42 @@ function renderAdminResultView(result) {
         
         <div style="text-align: center; margin-top: 1rem; margin-bottom: 2rem;">
             <button class="btn btn-primary" onclick="window.print()">Print Result</button>
+            <button class="btn btn-success" id="downloadSinglePdfBtn" style="margin-left: 1rem;">Download PDF</button>
         </div>
     `;
     
     output.innerHTML = html;
     output.style.display = "block";
+    
+    // Add event listener for Download PDF button
+    const downloadBtn = document.getElementById('downloadSinglePdfBtn');
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', async () => {
+            try {
+                const matricNo = result.matricNo;
+                
+                const pdfResponse = await fetch(`/api/admin/student-result/pdf?matricNo=${encodeURIComponent(matricNo)}&sessionId=${sessionId}&semester=${semester}`);
+                
+                if (pdfResponse.ok) {
+                    const blob = await pdfResponse.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `result_${matricNo}_${result.sessionName.replace(/\//g, '-')}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                } else {
+                    alert('Failed to download PDF');
+                }
+            } catch (e) {
+                console.error('Error downloading PDF:', e);
+                alert('Error downloading PDF');
+            }
+        });
+    }
+    
     smoothScrollTo(output);
 }
 

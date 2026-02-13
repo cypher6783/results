@@ -75,10 +75,22 @@ public class PdfService {
         // Column 1: Logo
         PdfPCell logoCell = new PdfPCell();
         logoCell.setBorder(Rectangle.NO_BORDER);
-        // TODO: Load actual logo image here
-        // Image logo = Image.getInstance("path/to/logo.png");
-        // logoCell.addElement(logo);
-        logoCell.addElement(new Phrase("LOGO", FontFactory.getFont(FontFactory.TIMES, 8)));
+        try {
+            // Try loading from classpath first
+            java.net.URL logoUrl = getClass().getResource("/static/uniagricLogo.png");
+            Image logo;
+            if (logoUrl != null) {
+                logo = Image.getInstance(logoUrl);
+            } else {
+                // Fallback to file system if not found in classpath (e.g. while running tests)
+                logo = Image.getInstance("c:/Users/ISAIAH/aNewProject/results/uniagricLogo.png");
+            }
+            logo.scaleToFit(50, 50);
+            logoCell.addElement(logo);
+        } catch (Exception e) {
+            log.error("Error loading logo image", e);
+            logoCell.addElement(new Phrase("LOGO", FontFactory.getFont(FontFactory.TIMES, 8)));
+        }
         headerTable.addCell(logoCell);
 
         // Column 2: University Details
