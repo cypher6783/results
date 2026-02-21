@@ -20,4 +20,8 @@ public interface CourseResultRepository extends JpaRepository<CourseResult, UUID
     @Modifying
     @Transactional
     void deleteByCourseId(UUID courseId);
+
+    @Modifying
+    @Transactional
+    void deleteByResult_SessionIdAndResult_Semester(UUID sessionId, Integer semester);
 }

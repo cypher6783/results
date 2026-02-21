@@ -285,7 +285,7 @@ public class PdfService {
         addLegendCell(table, "CCC = Cummulative Credit Carried", dataFont);
         addLegendCell(table, "CCE = Cummulative Credit Earned", dataFont); // Note: Image says "Cummulative" (sic)
         addLegendCell(table, "CPE = Cummulative Points Earned", dataFont);
-        addLegendCell(table, "CGPA = Cummulative Grade Points Averag", dataFont); // Image cut off? "Average"
+        addLegendCell(table, "CGPA = Cummulative Grade Points Average", dataFont); // Image cut off? "Average"
 
         document.add(table);
     }

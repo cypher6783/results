@@ -15,4 +15,8 @@ public interface ResultRepository extends JpaRepository<Result, UUID> {
     Optional<Result> findByStudentIdAndSessionIdAndSemester(UUID studentId, UUID sessionId, Integer semester);
 
     List<Result> findBySessionIdAndSemester(UUID sessionId, Integer semester);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    void deleteBySessionIdAndSemester(UUID sessionId, Integer semester);
 }
