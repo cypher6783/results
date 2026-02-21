@@ -360,6 +360,13 @@ public class ResultService {
         resultRepository.deleteAll();
     }
 
+    @Transactional
+    public void deleteResultsBySession(UUID sessionId, Integer semester) {
+        log.warn("Deleting results for session {} and semester {}...", sessionId, semester);
+        courseResultRepository.deleteByResult_SessionIdAndResult_Semester(sessionId, semester);
+        resultRepository.deleteBySessionIdAndSemester(sessionId, semester);
+    }
+
     private static class RecordSums {
         int tcc;
         int tce;

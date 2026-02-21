@@ -279,4 +279,14 @@ public class AdminController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @DeleteMapping("/results/session")
+    public ResponseEntity<?> deleteResultsBySession(@RequestParam UUID sessionId, @RequestParam Integer semester) {
+        try {
+            resultService.deleteResultsBySession(sessionId, semester);
+            return ResponseEntity.ok("Results for the specified session and semester have been deleted successfully.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

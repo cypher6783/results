@@ -268,6 +268,7 @@ export function renderAdminDashboard(user) {
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary">Generate Results</button>
+                    <button type="button" class="btn btn-danger" id="deleteSessionResultsBtn" style="margin-left: 0.5rem;">Delete Results for Session</button>
 
                     <button type="button" class="btn" id="downloadBatchPdfBtn" style="display: none; margin-left: 0.5rem;">Download Batch PDF</button>
                     <button type="button" class="btn" id="cancelResultsBtn">Cancel</button>
@@ -435,6 +436,45 @@ export function renderAdminDashboard(user) {
       } catch (err) {
         console.error(err);
         alert("Error resetting results");
+      }
+    }
+  });
+
+  document.getElementById("deleteSessionResultsBtn").addEventListener("click", async () => {
+    const form = document.getElementById("generateResultsForm");
+    const formData = new FormData(form);
+    const sessionId = formData.get("sessionId");
+    const semester = formData.get("semester");
+
+    if (!sessionId || !semester) {
+      alert("Please select a session and semester first.");
+      return;
+    }
+
+    const sessionSelect = document.getElementById("sessionSelect");
+    const sessionText = sessionSelect.options[sessionSelect.selectedIndex].text;
+    const semesterText = semester == 1 ? "First Semester" : "Second Semester";
+
+    const confirmation = confirm(
+      `CRITICAL ACTION: This will delete ALL processed results for ${sessionText} (${semesterText}). This cannot be undone.\n\nAre you sure you want to proceed?`
+    );
+
+    if (confirmation) {
+      try {
+        const response = await fetch(`/api/admin/results/session?sessionId=${sessionId}&semester=${semester}`, {
+          method: "DELETE",
+        });
+
+        if (response.ok) {
+          alert(`Results for ${sessionText} ${semesterText} have been deleted successfully.`);
+          document.getElementById("resultsOutput").style.display = "none";
+        } else {
+          const error = await response.text();
+          alert("Failed to delete results: " + error);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error deleting results");
       }
     }
   });
