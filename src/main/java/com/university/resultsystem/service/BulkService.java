@@ -32,14 +32,23 @@ public class BulkService {
                     continue; // Skip header
                 }
                 String[] parts = line.split(",");
-                if (parts.length < 3) continue;
+                if (parts.length < 3)
+                    continue;
 
                 String matricNo = parts[0].trim();
-                double ca = Double.parseDouble(parts[1].trim());
-                double exam = Double.parseDouble(parts[2].trim());
+                double ca;
+                double exam;
+                try {
+                    ca = Double.parseDouble(parts[1].trim());
+                    exam = Double.parseDouble(parts[2].trim());
+                } catch (NumberFormatException e) {
+                    continue; // Skip lines with invalid scores
+                }
 
                 Student student = studentRepository.findByMatricNo(matricNo)
-                        .orElseThrow(() -> new RuntimeException("Student not found: " + matricNo));
+                        .orElse(null);
+                if (student == null)
+                    continue;
 
                 ScoreEntryDto dto = new ScoreEntryDto();
                 dto.setStudentId(student.getId());

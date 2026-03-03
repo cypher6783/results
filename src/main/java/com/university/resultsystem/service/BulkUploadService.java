@@ -1,9 +1,11 @@
 package com.university.resultsystem.service;
 
 import com.university.resultsystem.dto.StudentRegistrationDto;
+import com.university.resultsystem.model.Course;
 import com.university.resultsystem.model.Student;
-import com.university.resultsystem.model.User;
 import com.university.resultsystem.repository.StudentRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,7 +14,9 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
+@Slf4j
 @Service
 public class BulkUploadService {
 
@@ -27,25 +31,23 @@ public class BulkUploadService {
         this.studentRepository = studentRepository;
     }
 
+    @Async
     @Transactional
-    public List<User> uploadStudents(MultipartFile file) {
-        List<User> createdStudents = new ArrayList<>();
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
-            String line;
+    public void uploadStudentsAsync(List<String> lines) {
+        log.info("Starting asynchronous student upload for {} lines", lines.size());
+        try {
             boolean isFirstLine = true;
-
-            while ((line = reader.readLine()) != null) {
-                // Skip header row
+            for (String line : lines) {
                 if (isFirstLine) {
                     isFirstLine = false;
                     continue;
                 }
+                if (line.trim().isEmpty())
+                    continue;
 
                 String[] fields = line.split(",");
-                if (fields.length < 4) {
-                    throw new RuntimeException("Invalid CSV format. Expected: FullName,MatricNo,Level,Department");
-                }
+                if (fields.length < 4)
+                    continue;
 
                 StudentRegistrationDto dto = new StudentRegistrationDto();
                 dto.setFullName(fields[0].trim());
@@ -53,36 +55,31 @@ public class BulkUploadService {
                 dto.setLevel(fields[2].trim());
                 dto.setDepartment(fields[3].trim());
 
-                User student = userService.createStudent(dto);
-                createdStudents.add(student);
+                userService.createStudent(dto);
             }
+            log.info("Asynchronous student upload completed successfully");
         } catch (Exception e) {
-            throw new RuntimeException("Error parsing CSV file: " + e.getMessage());
+            log.error("Error in asynchronous student upload: {}", e.getMessage(), e);
         }
-
-        return createdStudents;
     }
 
+    @Async
     @Transactional
-    public List<com.university.resultsystem.model.Course> uploadCourses(MultipartFile file) {
-        List<com.university.resultsystem.model.Course> createdCourses = new ArrayList<>();
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
-            String line;
+    public void uploadCoursesAsync(List<String> lines) {
+        log.info("Starting asynchronous course upload for {} lines", lines.size());
+        try {
             boolean isFirstLine = true;
-
-            while ((line = reader.readLine()) != null) {
-                // Skip header row
+            for (String line : lines) {
                 if (isFirstLine) {
                     isFirstLine = false;
                     continue;
                 }
+                if (line.trim().isEmpty())
+                    continue;
 
                 String[] fields = line.split(",");
-                if (fields.length < 6) {
-                    throw new RuntimeException(
-                            "Invalid CSV format. Expected: Code,Title,Units,Semester,Level,Department[,LecturerStaffId]");
-                }
+                if (fields.length < 6)
+                    continue;
 
                 com.university.resultsystem.dto.CourseDto dto = new com.university.resultsystem.dto.CourseDto();
                 dto.setCode(fields[0].trim());
@@ -96,13 +93,11 @@ public class BulkUploadService {
                     dto.setLecturerStaffId(fields[6].trim());
                 }
 
-                com.university.resultsystem.model.Course course = courseService.createCourse(dto);
-                createdCourses.add(course);
+                courseService.createCourse(dto);
             }
+            log.info("Asynchronous course upload completed successfully");
         } catch (Exception e) {
-            throw new RuntimeException("Error parsing CSV file: " + e.getMessage());
+            log.error("Error in asynchronous course upload: {}", e.getMessage(), e);
         }
-
-        return createdCourses;
     }
 }

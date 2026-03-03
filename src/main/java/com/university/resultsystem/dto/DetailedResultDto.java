@@ -38,4 +38,5 @@ public class DetailedResultDto {
     private Double cgpa;
 
     private String status;
+    private String approvalStatus;
 }

@@ -212,12 +212,50 @@ public class ResultService {
     }
 
     @Transactional
+    public void submitResults(UUID sessionId, Integer semester) {
+        List<Result> results = resultRepository.findBySessionIdAndSemester(sessionId, semester);
+        for (Result result : results) {
+            result.setApprovalStatus(ResultStatus.SUBMITTED);
+        }
+        resultRepository.saveAll(results);
+    }
+
+    @Transactional
+    public void vetResults(UUID sessionId, Integer semester) {
+        List<Result> results = resultRepository.findBySessionIdAndSemester(sessionId, semester);
+        for (Result result : results) {
+            result.setApprovalStatus(ResultStatus.VETTED);
+        }
+        resultRepository.saveAll(results);
+    }
+
+    @Transactional
     public void publishResults(UUID sessionId, Integer semester) {
         List<Result> results = resultRepository.findBySessionIdAndSemester(sessionId, semester);
         for (Result result : results) {
+            result.setApprovalStatus(ResultStatus.PUBLISHED);
             result.setPublished(true);
         }
         resultRepository.saveAll(results);
+    }
+
+    @Transactional
+    public void updateResultStatus(UUID resultId, ResultStatus status) {
+        Result result = resultRepository.findById(resultId)
+                .orElseThrow(() -> new RuntimeException("Result not found"));
+        result.setApprovalStatus(status);
+        if (status == ResultStatus.PUBLISHED) {
+            result.setPublished(true);
+        }
+        resultRepository.save(result);
+    }
+
+    public ResultStatus getAggregateStatus(UUID sessionId, Integer semester) {
+        List<Result> results = resultRepository.findBySessionIdAndSemester(sessionId, semester);
+        if (results.isEmpty()) {
+            throw new RuntimeException("No results found for the specified session and semester.");
+        }
+        return results.get(0).getApprovalStatus();
     }
 
     public DetailedResultDto getDetailedResult(UUID studentId, UUID sessionId, Integer semester) {
@@ -229,7 +267,7 @@ public class ResultService {
         Result result = resultRepository.findByStudentIdAndSessionIdAndSemester(studentId, sessionId, semester)
                 .orElseThrow(() -> new RuntimeException("Result not found"));
 
-        if (checkPublished && !result.isPublished()) {
+        if (checkPublished && result.getApprovalStatus() != ResultStatus.PUBLISHED) {
             throw new RuntimeException("Results for this semester have not been published yet.");
         }
 
@@ -283,6 +321,7 @@ public class ResultService {
         dto.setCgpa(result.getCgpa());
 
         dto.setStatus(result.getStatus());
+        dto.setApprovalStatus(result.getApprovalStatus().name());
 
         return dto;
     }

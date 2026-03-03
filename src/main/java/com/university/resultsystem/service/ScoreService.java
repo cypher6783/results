@@ -79,6 +79,15 @@ public class ScoreService {
         Score score = scoreRepository.findByRegistration(registration)
                 .orElse(new Score());
 
+        String oldValues = "N/A";
+        if (score.getId() != null) {
+            oldValues = String.format("CA: %.2f, Exam: %.2f", score.getCaScore(), score.getExamScore());
+        }
+
+        if (dto.getCaScore() == null || dto.getExamScore() == null) {
+            throw new RuntimeException("Both CA and Exam scores are required.");
+        }
+
         score.setRegistration(registration);
         score.setCaScore(dto.getCaScore());
         score.setExamScore(dto.getExamScore());
@@ -90,8 +99,11 @@ public class ScoreService {
 
         Score savedScore = scoreRepository.save(score);
 
+        String newValues = String.format("CA: %.2f, Exam: %.2f", savedScore.getCaScore(), savedScore.getExamScore());
+        String changeLog = String.format("Old [%s] -> New [%s]", oldValues, newValues);
+
         auditService.logAction(lecturerUsername, "ENTER_SCORE", "Score", savedScore.getId().toString(),
-                "Updated score for student " + student.getMatricNo());
+                changeLog);
 
         return savedScore;
     }

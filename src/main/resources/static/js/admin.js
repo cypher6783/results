@@ -38,6 +38,7 @@ export function renderAdminDashboard(user) {
                     <p>Password reset and bulk operations</p>
                     <button class="btn btn-primary" style="margin-top: 1rem" id="changePasswordBtn">Change User Password</button>
                     <button class="btn" style="margin-top: 0.5rem" id="bulkResultsBtn">Generate Bulk Results</button>
+                    <button class="btn" style="margin-top: 0.5rem; background: var(--secondary-color); color: white;" id="manageApprovalsBtn">Manage Result Approvals</button>
                     <button class="btn btn-danger" style="margin-top: 0.5rem; width: 100%;" id="resetResultsBtn">Reset All Results</button>
                     <button class="btn" style="margin-top: 0.5rem" id="searchResultBtn">Search Student Result</button>
                     <button class="btn" style="margin-top: 0.5rem" id="changeOwnPasswordBtn">Change My Password</button>
@@ -276,6 +277,34 @@ export function renderAdminDashboard(user) {
                 <div id="resultsOutput" style="margin-top: 1rem; display: none;"></div>
             </div>
 
+            <!-- Manage Approvals Form -->
+            <div id="manageApprovalsForm" class="card" style="margin-top: 2rem; display: none;">
+                <h3>Manage Result Approvals</h3>
+                <p style="color: #666; margin-bottom: 1rem;">
+                    View and update the approval status of generated results (Draft -> Submitted -> Vetted -> Published).
+                </p>
+                <form id="checkApprovalStatusForm">
+                    <div class="input-group">
+                        <label>Academic Session</label>
+                        <select name="sessionId" id="approvalSessionSelect" required>
+                            <option value="">Loading sessions...</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Semester</label>
+                        <select name="semester" required>
+                            <option value="1">First Semester</option>
+                            <option value="2">Second Semester</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Check Status</button>
+                    <button type="button" class="btn" id="cancelApprovalsBtn">Cancel</button>
+                </form>
+                <div id="approvalWorkflowContent" style="margin-top: 1.5rem; display: none;">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
             <!-- Search Student Result Form -->
             <div id="searchResultForm" class="card" style="margin-top: 2rem; display: none;">
                 <h3>Search Student Result</h3>
@@ -400,6 +429,37 @@ export function renderAdminDashboard(user) {
     smoothScrollTo(form);
   });
 
+  document.getElementById("manageApprovalsBtn").addEventListener("click", async () => {
+    hideAllSections();
+    await loadSessions("approvalSessionSelect");
+    const form = document.getElementById("manageApprovalsForm");
+    form.style.display = "block";
+    document.getElementById("approvalWorkflowContent").style.display = "none";
+    smoothScrollTo(form);
+  });
+
+  document.getElementById("checkApprovalStatusForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const sessionId = formData.get("sessionId");
+    const semester = formData.get("semester");
+
+    try {
+        const response = await fetch(`/api/admin/results/status?sessionId=${sessionId}&semester=${semester}`);
+        
+        if (response.ok) {
+            const status = await response.text();
+            renderApprovalWorkflow(sessionId, semester, status);
+        } else {
+            const error = await response.text();
+            alert("Error fetching status: " + error);
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Error fetching approval status");
+    }
+  });
+
   document.getElementById("searchResultBtn").addEventListener("click", async () => {
     hideAllSections();
     await loadSessions("searchSessionSelect");
@@ -506,6 +566,11 @@ export function renderAdminDashboard(user) {
 
   document.getElementById("cancelResultsBtn").addEventListener("click", () => {
     document.getElementById("bulkResultsForm").style.display = "none";
+  });
+
+  document.getElementById("cancelApprovalsBtn").addEventListener("click", () => {
+    document.getElementById("manageApprovalsForm").style.display = "none";
+    document.getElementById("approvalWorkflowContent").style.display = "none";
   });
 
   document.getElementById("cancelSearchBtn").addEventListener("click", () => {
@@ -1456,3 +1521,71 @@ async function handleResponseError(response, defaultMsg) {
 
 // Update fetch calls to use handleResponseError...
 // (This is a simplified replacement for demonstration, I'll apply it specifically to a few key locations)
+
+// Manage Approvals Logic executed when form is submitted
+
+function renderApprovalWorkflow(sessionId, semester, status) {
+    const content = document.getElementById("approvalWorkflowContent");
+    const sessionObj = document.getElementById("approvalSessionSelect");
+    const sessionName = sessionObj.options[sessionObj.selectedIndex].text;
+    const semesterName = semester == 1 ? "First Semester" : "Second Semester";
+
+    let html = `
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+            <h4 style="margin: 0 0 1rem 0; color: #334155;">Approval Status: ${sessionName} - ${semesterName}</h4>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+                <div style="font-size: 1.1rem; font-weight: bold; color: var(--primary-color);">
+                    Current State: <span style="padding: 0.25rem 0.5rem; background: #e2e8f0; border-radius: 4px;">${status}</span>
+                </div>
+            </div>
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+    `;
+
+    if (status === "DRAFT") {
+        html += `
+            <p style="color: #64748b; margin-bottom: 1rem;">Results have been generated but not submitted for vetting.</p>
+            <button class="btn btn-primary" onclick="transitionResultState('${sessionId}', ${semester}, 'submit-results', 'submit these results for vetting')">Submit for Vetting</button>
+        `;
+    } else if (status === "SUBMITTED") {
+        html += `
+            <p style="color: #64748b; margin-bottom: 1rem;">Results are submitted and await vetting/validation by the academic committee.</p>
+            <button class="btn btn-warning" onclick="transitionResultState('${sessionId}', ${semester}, 'vet-results', 'mark these results as vetted')">Vet Results</button>
+        `;
+    } else if (status === "VETTED") {
+        html += `
+            <p style="color: #64748b; margin-bottom: 1rem;">Results have been vetted and are ready to be published to students.</p>
+            <button class="btn btn-success" onclick="transitionResultState('${sessionId}', ${semester}, 'publish-results', 'publish these results completely')">Publish Results</button>
+        `;
+    } else if (status === "PUBLISHED") {
+        html += `
+            <p style="color: #16a34a; font-weight: bold; margin-bottom: 0;">✅ These results are published and visible to students.</p>
+        `;
+    }
+
+    html += `</div></div>`;
+    content.innerHTML = html;
+    content.style.display = "block";
+
+    // Bind the helper function to window so the inline onclick can find it
+    window.transitionResultState = async (sId, sem, endpoint, actionText) => {
+        if (confirm(`Are you sure you want to ${actionText}?`)) {
+            try {
+                const response = await fetch(`/api/admin/${endpoint}?sessionId=${sId}&semester=${sem}`, {
+                    method: "POST"
+                });
+
+                if (response.ok) {
+                    alert("Status updated successfully!");
+                    // Re-trigger the form submission to refresh the status
+                    document.getElementById("checkApprovalStatusForm").dispatchEvent(new Event("submit"));
+                } else {
+                    const error = await response.text();
+                    alert("Failed to update status: " + error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error updating status");
+            }
+        }
+    };
+}

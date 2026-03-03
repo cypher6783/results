@@ -63,10 +63,18 @@ public class AdminController {
     @PostMapping("/students/bulk")
     public ResponseEntity<String> bulkUploadStudents(@RequestParam("file") MultipartFile file) {
         try {
-            bulkUploadService.uploadStudents(file);
-            return ResponseEntity.ok("Successfully uploaded students from CSV");
+            java.util.List<String> lines = new java.util.ArrayList<>();
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(file.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    lines.add(line);
+                }
+            }
+            bulkUploadService.uploadStudentsAsync(lines);
+            return ResponseEntity.ok("Student bulk upload started in the background. Please check logs for progress.");
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Failed to upload students: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Failed to start student upload: " + e.getMessage());
         }
     }
 
@@ -113,10 +121,18 @@ public class AdminController {
     @PostMapping("/courses/bulk")
     public ResponseEntity<String> bulkUploadCourses(@RequestParam("file") MultipartFile file) {
         try {
-            bulkUploadService.uploadCourses(file);
-            return ResponseEntity.ok("Successfully uploaded courses from CSV");
+            java.util.List<String> lines = new java.util.ArrayList<>();
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(file.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    lines.add(line);
+                }
+            }
+            bulkUploadService.uploadCoursesAsync(lines);
+            return ResponseEntity.ok("Course bulk upload started in the background. Please check logs for progress.");
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Failed to upload courses: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Failed to start course upload: " + e.getMessage());
         }
     }
 
@@ -215,11 +231,41 @@ public class AdminController {
         }
     }
 
-    // Bulk Result Generation
     @PostMapping("/bulk-results")
     public ResponseEntity<?> processBulkResults(@RequestParam UUID sessionId, @RequestParam Integer semester) {
         try {
             return ResponseEntity.ok(resultService.processBulkResults(sessionId, semester));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/results/status")
+    public ResponseEntity<String> getResultsStatus(@RequestParam UUID sessionId, @RequestParam Integer semester) {
+        try {
+            com.university.resultsystem.model.ResultStatus status = resultService.getAggregateStatus(sessionId,
+                    semester);
+            return ResponseEntity.ok(status.name());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/submit-results")
+    public ResponseEntity<?> submitResults(@RequestParam UUID sessionId, @RequestParam Integer semester) {
+        try {
+            resultService.submitResults(sessionId, semester);
+            return ResponseEntity.ok("Results submitted for vetting successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/vet-results")
+    public ResponseEntity<?> vetResults(@RequestParam UUID sessionId, @RequestParam Integer semester) {
+        try {
+            resultService.vetResults(sessionId, semester);
+            return ResponseEntity.ok("Results vetted successfully");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

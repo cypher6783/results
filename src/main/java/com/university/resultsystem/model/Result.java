@@ -69,6 +69,11 @@ public class Result {
     @Column
     private Double cgpa;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @org.hibernate.annotations.ColumnDefault("'DRAFT'")
+    private ResultStatus approvalStatus = ResultStatus.DRAFT;
+
     @Column(nullable = false)
     private String status; // PASS, FAIL, PROBATION
 

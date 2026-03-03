@@ -23,6 +23,7 @@ public class LecturerController {
     private final ScoreService scoreService;
     private final BulkService bulkService;
     private final com.university.resultsystem.repository.StudentRepository studentRepository;
+    private final com.university.resultsystem.service.CourseService courseService;
 
     public LecturerController(ScoreService scoreService, BulkService bulkService,
             com.university.resultsystem.repository.StudentRepository studentRepository,
@@ -32,8 +33,6 @@ public class LecturerController {
         this.studentRepository = studentRepository;
         this.courseService = courseService;
     }
-
-    private final com.university.resultsystem.service.CourseService courseService;
 
     @org.springframework.web.bind.annotation.GetMapping("/courses")
     public ResponseEntity<List<com.university.resultsystem.model.Course>> getLecturerCourses() {

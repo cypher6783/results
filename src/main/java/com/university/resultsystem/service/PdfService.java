@@ -13,6 +13,10 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
+import com.itextpdf.text.pdf.PdfPageEventHelper;
+import com.itextpdf.text.pdf.PdfContentByte;
+import com.itextpdf.text.pdf.ColumnText;
+import com.itextpdf.text.pdf.PdfGState;
 
 @Slf4j
 @Service
@@ -28,7 +32,8 @@ public class PdfService {
         Document document = new Document(PageSize.A4, 30, 30, 30, 30);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        PdfWriter.getInstance(document, out);
+        PdfWriter writer = PdfWriter.getInstance(document, out);
+        writer.setPageEvent(new WatermarkPageEvent());
         document.open();
 
         // Add header
@@ -290,6 +295,35 @@ public class PdfService {
         document.add(table);
     }
 
+    private static class WatermarkPageEvent extends PdfPageEventHelper {
+
+        private final Font watermarkFont = FontFactory.getFont(FontFactory.TIMES_BOLD, 52, BaseColor.LIGHT_GRAY);
+
+        @Override
+        public void onEndPage(PdfWriter writer, Document document) {
+
+            PdfContentByte canvas = writer.getDirectContentUnder();
+
+            PdfGState gs = new PdfGState();
+            gs.setFillOpacity(0.15f); // transparency
+            canvas.saveState();
+            canvas.setGState(gs);
+
+            Phrase watermark = new Phrase("Department of Computer Science", watermarkFont);
+
+            ColumnText.showTextAligned(
+                    canvas,
+                    Element.ALIGN_CENTER,
+                    watermark,
+                    (document.right() + document.left()) / 2,
+                    (document.top() + document.bottom()) / 2,
+                    45 // diagonal rotation
+            );
+
+            canvas.restoreState();
+        }
+    }
+
     private void addFooter(Document document) throws DocumentException {
         document.add(Chunk.NEWLINE);
         document.add(Chunk.NEWLINE);
@@ -380,7 +414,8 @@ public class PdfService {
     public byte[] generateBatchResultsPdf(List<DetailedResultDto> results) throws DocumentException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A4, 30, 30, 30, 30);
-        PdfWriter.getInstance(document, out);
+        PdfWriter writer = PdfWriter.getInstance(document, out);
+        writer.setPageEvent(new WatermarkPageEvent());
         document.open();
 
         for (int i = 0; i < results.size(); i++) {
