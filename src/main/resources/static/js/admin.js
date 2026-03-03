@@ -353,6 +353,12 @@ export function renderAdminDashboard(user) {
                 </form>
             </div>
         </div>
+        
+        <!-- Global Loading Overlay -->
+        <div id="globalLoader" class="loading-overlay" style="display: none;">
+            <div class="spinner"></div>
+            <div class="loading-text" id="globalLoaderText">Generating Results... Please wait.</div>
+        </div>
     `;
 
   // Event Listeners
@@ -785,6 +791,9 @@ export function renderAdminDashboard(user) {
     const sessionId = formData.get("sessionId");
     const semester = formData.get("semester");
 
+    const loader = document.getElementById("globalLoader");
+    loader.style.display = "flex";
+
     try {
       const response = await fetch(`/api/admin/bulk-results?sessionId=${sessionId}&semester=${semester}`, {
         method: "POST",
@@ -827,6 +836,10 @@ export function renderAdminDashboard(user) {
     } catch (err) {
       console.error(err);
       alert("Error generating results");
+    } finally {
+      if (loader) {
+        loader.style.display = "none";
+      }
     }
   });
 
