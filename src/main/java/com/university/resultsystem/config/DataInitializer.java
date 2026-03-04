@@ -15,6 +15,7 @@ public class DataInitializer {
     public CommandLineRunner initData(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         return args -> {
             if (!userRepository.existsByUsername("admin")) {
+                System.out.println("No admin user found. Creating default admin...");
                 User admin = new User();
                 admin.setUsername("admin");
                 admin.setPasswordHash(passwordEncoder.encode("admin123"));
@@ -22,7 +23,10 @@ public class DataInitializer {
                 admin.setRole(Role.ADMIN);
                 admin.setEmail("admin@university.com");
                 userRepository.save(admin);
-                System.out.println("Default Admin User Created: admin / admin123");
+                System.out.println("Default Admin User Created Successfully: admin / admin123");
+            } else {
+                System.out.println(
+                        "Admin user already exists in the database. (If login fails, ensure password is correct or reset manually)");
             }
         };
     }

@@ -123,8 +123,11 @@ public class AuthController {
             request.getSession().setAttribute("SPRING_SECURITY_CONTEXT", SecurityContextHolder.getContext());
             return ResponseEntity.ok().build();
 
-        } catch (Exception e) {
+        } catch (org.springframework.security.core.AuthenticationException e) {
             return ResponseEntity.status(401).body("Invalid credentials");
+        } catch (Exception e) {
+            e.printStackTrace(); // Log the full stack trace for diagnostics on Railway
+            return ResponseEntity.status(500).body("Internal Server Error: " + e.getMessage());
         }
     }
 
