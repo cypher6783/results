@@ -40,6 +40,12 @@ public class User {
     @Column(nullable = false)
     private boolean passwordChanged = false;
 
+    @Column(nullable = false)
+    private boolean mfaEnabled = false;
+
+    @Column(name = "mfa_secret")
+    private String mfaSecret;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

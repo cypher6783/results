@@ -27,27 +27,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable) // Disable CSRF for development/simplicity with REST
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/h2-console/**", "/", "/index.html", "/css/**", "/js/**").permitAll()
-                .requestMatchers("/api/sessions/**", "/api/courses/**").authenticated()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/lecturer/**").hasAnyRole("LECTURER", "ADMIN")
-                .requestMatchers("/api/student/**").hasAnyRole("STUDENT", "ADMIN")
-                .anyRequest().authenticated()
-            )
-            .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())) // Allow H2 console
-            .formLogin(form -> form
-                .loginProcessingUrl("/api/auth/login")
-                .successHandler((request, response, authentication) -> response.setStatus(200))
-                .failureHandler((request, response, exception) -> response.setStatus(401))
-                .permitAll()
-            )
-            .logout(logout -> logout
-                .logoutUrl("/api/auth/logout")
-                .logoutSuccessHandler((request, response, authentication) -> response.setStatus(200))
-                .permitAll()
-            );
+                .csrf(AbstractHttpConfigurer::disable) // Disable CSRF for development/simplicity with REST
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**", "/h2-console/**", "/", "/index.html", "/css/**", "/js/**")
+                        .permitAll()
+                        .requestMatchers("/api/sessions/**", "/api/courses/**").authenticated()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/lecturer/**").hasAnyRole("LECTURER", "ADMIN")
+                        .requestMatchers("/api/student/**").hasAnyRole("STUDENT", "ADMIN")
+                        .anyRequest().authenticated())
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())) // Allow H2 console
+                .logout(logout -> logout
+                        .logoutUrl("/api/auth/logout")
+                        .logoutSuccessHandler((request, response, authentication) -> response.setStatus(200))
+                        .permitAll());
 
         return http.build();
     }

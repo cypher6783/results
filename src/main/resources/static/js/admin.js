@@ -85,6 +85,10 @@ export function renderAdminDashboard(user) {
                         <label>Staff ID</label>
                         <input type="text" name="staffId" placeholder="e.g., STAFF001" required>
                     </div>
+                    <div class="input-group">
+                        <label>Email Address</label>
+                        <input type="email" name="email" placeholder="e.g., lecturer@university.edu" required>
+                    </div>
                     <p style="color: #666; font-size: 0.9rem; margin: 1rem 0;">
                         Default password will be the staff ID. Lecturer must change password on first login.
                     </p>
@@ -238,7 +242,10 @@ export function renderAdminDashboard(user) {
                     </div>
                     <div class="input-group">
                         <label>New Password</label>
-                        <input type="password" name="newPassword" required>
+                        <div style="position: relative;">
+                            <input type="password" name="newPassword" id="adminNewPassword" required style="width: 100%; padding-right: 40px;">
+                            <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility('adminNewPassword')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem;">👁</button>
+                        </div>
                     </div>
                     <p style="color: #666; font-size: 0.9rem; margin: 1rem 0;">
                         User will be forced to change password on next login.
@@ -338,15 +345,24 @@ export function renderAdminDashboard(user) {
                 <form id="adminSelfPasswordForm">
                     <div class="input-group">
                         <label>Current Password</label>
-                        <input type="password" name="oldPassword" required>
+                        <div style="position: relative;">
+                            <input type="password" name="oldPassword" id="selfOldPassword" required style="width: 100%; padding-right: 40px;">
+                            <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility('selfOldPassword')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem;">👁</button>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label>New Password</label>
-                        <input type="password" name="newPassword" required>
+                        <div style="position: relative;">
+                            <input type="password" name="newPassword" id="selfNewPassword" required style="width: 100%; padding-right: 40px;">
+                            <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility('selfNewPassword')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem;">👁</button>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label>Confirm New Password</label>
-                        <input type="password" name="confirmNewPassword" required>
+                        <div style="position: relative;">
+                            <input type="password" name="confirmNewPassword" id="selfConfirmPassword" required style="width: 100%; padding-right: 40px;">
+                            <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility('selfConfirmPassword')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem;">👁</button>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Change Password</button>
                     <button type="button" class="btn" id="cancelOwnPasswordBtn">Cancel</button>

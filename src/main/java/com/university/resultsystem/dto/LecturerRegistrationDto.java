@@ -9,5 +9,6 @@ import java.util.UUID;
 public class LecturerRegistrationDto {
     private String fullName;
     private String staffId;
+    private String email;
     private List<UUID> courseIds; // Optional: courses to assign
 }

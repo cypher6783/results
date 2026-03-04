@@ -101,6 +101,7 @@ public class UserService {
         user.setUsername(dto.getStaffId());
         user.setPasswordHash(passwordEncoder.encode(dto.getStaffId())); // Default password = staff ID
         user.setFullName(dto.getFullName());
+        user.setEmail(dto.getEmail());
         user.setRole(Role.LECTURER);
         user.setPasswordChanged(false); // User must change password on first login
 
