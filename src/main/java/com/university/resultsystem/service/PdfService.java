@@ -87,8 +87,8 @@ public class PdfService {
             if (logoUrl != null) {
                 logo = Image.getInstance(logoUrl);
             } else {
-                // Fallback to file system if not found in classpath (e.g. while running tests)
-                logo = Image.getInstance("c:/Users/ISAIAH/aNewProject/results/uniagricLogo.png");
+                // Fallback to relative path which works better in containers if classpath fails
+                logo = Image.getInstance("src/main/resources/static/uniagricLogo.png");
             }
             logo.scaleToFit(50, 50);
             logoCell.addElement(logo);
