@@ -1,0 +1,17 @@
+target/
+.git/
+.gitignore
+.mvn/
+mvnw
+mvnw.cmd
+.vscode/
+.settings/
+.classpath
+.project
+*.log
+data/
+screenshots/
+uniagricLogo.png
+README.md
+Dockerfile
+.dockerignore
