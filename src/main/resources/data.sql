@@ -1,5 +1,4 @@
 -- Insert Academic Sessions with fixed UUIDs to prevent duplication on restart
-ALTER TABLE results ADD COLUMN IF NOT EXISTS published BOOLEAN DEFAULT FALSE;
 
 INSERT INTO academic_sessions (id, name, start_date, end_date, is_current, labeled) VALUES
 ('b1a1a1a1-1111-1111-1111-111111111111', '2000/2001', '2000-09-01', '2001-08-31', false, true),

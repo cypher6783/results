@@ -157,6 +157,7 @@ public class AuthController {
             return ResponseEntity.ok().build();
         }
 
+        System.out.println("MFA Code verification failed for user: " + user.getUsername());
         return ResponseEntity.status(401).body("Invalid MFA Code.");
     }
 
@@ -182,7 +183,11 @@ public class AuthController {
             tokenRepository.findByUser(user).ifPresent(tokenRepository::delete);
             tokenRepository.save(resetToken);
 
-            String resetUrl = "http://localhost:8080/#/reset-password?token=" + token; // Adjust host as needed
+            String baseUrl = System.getenv("APP_BASE_URL");
+            if (baseUrl == null || baseUrl.isEmpty()) {
+                baseUrl = "http://localhost:8080";
+            }
+            String resetUrl = baseUrl + "/#/reset-password?token=" + token;
 
             try {
                 SimpleMailMessage message = new SimpleMailMessage();
